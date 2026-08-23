@@ -1,0 +1,35 @@
+# API
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+
+# Transcription
+assemblyai
+faster-whisper
+
+# Audio / signal processing
+librosa
+soundfile
+ruptures
+
+# Evidence verification
+rapidfuzz
+
+# LLM reasoning + clustering
+ollama
+sentence-transformers
+hdbscan
+
+# Evaluation
+jiwer
+
+# Testing
+pytest
+httpx
+
+# NOTE: versions intentionally unpinned for the initial scaffold.
+# Run `pip freeze > requirements.lock.txt` after the first successful
+# install and commit that alongside this file.

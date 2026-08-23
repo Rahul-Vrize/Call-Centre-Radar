@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+build/
+.vite/
+
+# Env / secrets — real API keys live only here, never committed
+.env
+.env.local
+backend/.env
+
+# Data — the dataset (real customer call recordings) and generated DB/audio
+# are never committed. 1,441 calls / ~500MB — far too large and sensitive for
+# git history; the README documents how to fetch/unzip it locally instead.
+callradar-data/
+data/audio/*
+!data/audio/.gitkeep
+data/metadata/*
+!data/metadata/.gitkeep
+*.db
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Pipeline working files — split-channel wavs and other transient output
+# produced while processing a call (see app/pipeline/audio.py)
+**/*.agent.wav
+**/*.customer.wav
+backend/work/
+backend/smoketest.wav
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
