@@ -27,8 +27,19 @@ data/audio/*
 !data/audio/.gitkeep
 data/metadata/*
 !data/metadata/.gitkeep
+# Split-channel scratch: rebuilt per call, never read again.
+data/work/
+
 *.db
 *.sqlite3
+
+# ...but DO ship the analysed database and the transcripts. Re-running the
+# pipeline costs real money (~$7 of AssemblyAI credit) and ~90 minutes, and the
+# brief asks for a system that is "ready to demonstrate" — so anyone cloning
+# this gets 1,441 analysed calls immediately and can skip straight to serving.
+# Both are small: 16MB each.
+!data/radar.db
+!data/cache/**
 *.db-wal
 *.db-shm
 

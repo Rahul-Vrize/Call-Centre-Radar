@@ -1,27 +1,90 @@
-// Turn-by-turn transcript, synced to playback: clicking a turn seeks the
-// audio; the current turn auto-highlights during playback.
-interface Turn {
-  id: number;
-  speaker: "agent" | "customer";
-  start_seconds: number;
-  text: string;
-}
+"use client";
+
+import { useEffect, useRef } from "react";
+import type { Turn } from "@/lib/types";
+import { cn, formatSeconds } from "@/lib/utils";
+import { usePlayer } from "./PlayerContext";
 
 interface Props {
   turns: Turn[];
-  onSeek: (seconds: number) => void;
+  /** The change-point-detected mood shift, marked inline in the transcript. */
+  shiftTurnId?: number | null;
 }
 
-export default function TranscriptPanel({ turns, onSeek }: Props) {
+export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
+  const { seekTo, currentTime } = usePlayer();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const activeTurn = turns.find(
+    (t) => currentTime >= t.start_seconds && currentTime < t.end_seconds,
+  );
+  const activeId = activeTurn?.id ?? null;
+
+  // Follow playback, but only scroll within the panel — never yank the page.
+  useEffect(() => {
+    if (activeId === null || !scrollRef.current) return;
+    const el = scrollRef.current.querySelector(`[data-turn-id="${activeId}"]`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeId]);
+
+  if (turns.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+        No transcript stored for this call yet — run the ingestion pipeline.
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 border rounded space-y-2">
-      {turns.length === 0 && <p>TODO: transcript turns</p>}
-      {turns.map((t) => (
-        <div key={t.id} onClick={() => onSeek(t.start_seconds)} className="cursor-pointer">
-          <span className="text-xs text-gray-500 mr-2">{t.speaker}</span>
-          {t.text}
-        </div>
-      ))}
+    <div
+      ref={scrollRef}
+      className="max-h-[28rem] overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-800"
+    >
+      {turns.map((turn) => {
+        const isActive = turn.id === activeId;
+        const isShift = shiftTurnId != null && turn.id === shiftTurnId;
+        return (
+          <div
+            key={turn.id}
+            data-turn-id={turn.id}
+            onClick={() => seekTo(turn.start_seconds)}
+            className={cn(
+              "flex cursor-pointer gap-3 border-b border-neutral-100 px-4 py-2.5 text-sm transition last:border-b-0 dark:border-neutral-900",
+              isActive
+                ? "bg-indigo-500/10"
+                : "hover:bg-neutral-50 dark:hover:bg-neutral-900/50",
+              isShift && "border-l-2 border-l-amber-500",
+            )}
+          >
+            <span className="w-12 shrink-0 pt-0.5 font-mono text-xs tabular-nums text-neutral-400">
+              {formatSeconds(turn.start_seconds)}
+            </span>
+            <span
+              className={cn(
+                "w-20 shrink-0 pt-0.5 text-xs font-medium uppercase tracking-wide",
+                turn.speaker === "customer"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-neutral-500",
+              )}
+            >
+              {turn.speaker}
+            </span>
+            <p className="min-w-0 flex-1">
+              {turn.text}
+              {turn.overlapping && (
+                <span className="ml-2 rounded bg-neutral-200 px-1 py-0.5 font-mono text-[10px] uppercase text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                  crosstalk
+                </span>
+              )}
+              {isShift && (
+                <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] uppercase text-amber-700 dark:text-amber-400">
+                  ◐ mood shift
+                </span>
+              )}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,0 +1,15 @@
+# Optional extras. The main pipeline in requirements.txt does NOT need these.
+
+# Word error rate against a hand-checked gold set, for the eval harness.
+jiwer
+
+# Only if you decide to add audio-derived prosody (RMS energy) on top of the
+# timestamp-derived rate/pause features. Deliberately unused by default: 8kHz
+# codec-degraded, scripted telephony doesn't support pitch or energy analysis
+# well enough to justify the dependency weight. See pipeline/mood.py.
+# librosa
+# soundfile
+
+# Only if HDBSCAN leaves >30% of calls as noise. FASTopic (NeurIPS 2024) handles
+# short texts — like <=40-word summaries — better than HDBSCAN over embeddings.
+# fastopic

@@ -1,3 +1,5 @@
+# The whole pipeline. Deliberately torch-free — see the note on fastembed.
+
 # API
 fastapi
 uvicorn[standard]
@@ -7,29 +9,42 @@ python-dotenv
 python-multipart
 
 # Transcription
-assemblyai
-faster-whisper
+assemblyai          # primary — multichannel, spends the free credit
+faster-whisper      # offline fallback — no API key, no network
 
-# Audio / signal processing
-librosa
-soundfile
+# Mood: lexicon sentiment + change-point detection.
+# VADER is deterministic, instant, needs no model download, and you can point at
+# the word that moved a score — explainability matters more here than the couple
+# of points a transformer would add on scripted bank calls.
+vaderSentiment
 ruptures
+numpy
+
+# Embeddings for evidence-support checking and issue clustering.
+# fastembed runs bge-small on ONNX (~50MB) instead of sentence-transformers'
+# torch (~2.5GB), and onnxruntime is already present for faster-whisper's VAD.
+fastembed
+
+# Clustering. scikit-learn ships HDBSCAN natively (>=1.3), avoiding the
+# standalone `hdbscan` package which needs a compiler and fails on Windows.
+scikit-learn
 
 # Evidence verification
 rapidfuzz
 
-# LLM reasoning + clustering
+# LLM reasoning.
+#   bedrock — Claude on AWS. No 8k-TPM ceiling, and better turn selection.
+#   groq    — fast and cheap, but only gpt-oss supports strict json_schema,
+#             and the free tier's 8000 TPM caps throughput at ~9 calls/min.
+#   ollama  — offline fallback.
+# Bedrock is reached through boto3's Converse API rather than the Anthropic
+# SDK: AWS documents that structured outputs are NOT supported on the
+# bedrock-mantle endpoint the SDK targets, and Converse is model-agnostic, so
+# one code path serves Claude and the gpt-oss models alike.
+boto3
+groq
 ollama
-sentence-transformers
-hdbscan
-
-# Evaluation
-jiwer
 
 # Testing
 pytest
 httpx
-
-# NOTE: versions intentionally unpinned for the initial scaffold.
-# Run `pip freeze > requirements.lock.txt` after the first successful
-# install and commit that alongside this file.

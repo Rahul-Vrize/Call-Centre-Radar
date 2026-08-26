@@ -96,3 +96,30 @@ class TrendingIssue(BaseModel):
     label: str
     call_count: int
     counts_by_day: dict[str, int]
+
+    # Outcome quality is the real signal in this corpus. With only four
+    # non-contiguous recording days, per-day counts mirror the recording
+    # schedule rather than any trend — these fields are what actually
+    # distinguish one issue from another.
+    resolution_rate: float
+    avg_attention_score: float
+    avg_handle_time_seconds: float
+
+    #: Cluster's share of each day's calls. Comparable across days in a way raw
+    #: counts are not: a day with 95 calls and one with 369 look identical here
+    #: unless the issue genuinely over- or under-indexes on that day.
+    share_by_day: dict[str, float]
+
+
+class TrendsBaseline(BaseModel):
+    """Corpus-wide averages, so a cluster's numbers can be read as better or
+    worse than typical rather than in isolation."""
+    call_count: int
+    resolution_rate: float
+    avg_attention_score: float
+    avg_handle_time_seconds: float
+
+
+class TrendsResponse(BaseModel):
+    baseline: TrendsBaseline
+    issues: list[TrendingIssue]

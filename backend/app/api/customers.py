@@ -1,16 +1,48 @@
 """GET /customers, GET /customers/{id}/calls — reads only, no pipeline work here."""
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.call import Customer, CallSummary
+from app.db.session import DbConn
+from app.schemas.call import CallSummary, Customer
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[Customer])
-def list_customers():
-    raise HTTPException(status_code=501, detail="not implemented")
+def list_customers(conn: DbConn):
+    rows = conn.execute(
+        """
+        SELECT c.id, c.name,
+               COUNT(calls.id)       AS call_count,
+               MAX(calls.started_at) AS last_contact
+        FROM customers c
+        LEFT JOIN calls ON calls.customer_id = c.id
+        GROUP BY c.id, c.name
+        ORDER BY call_count DESC, c.name
+        """
+    ).fetchall()
+    return [Customer(**dict(r)) for r in rows]
 
 
-@router.get("/{customer_id}/calls", response_model=list[CallSummary])
-def customer_calls(customer_id: str):
-    raise HTTPException(status_code=501, detail="not implemented")
+@router.get(
+    "/{customer_id}/calls",
+    response_model=list[CallSummary],
+    responses={404: {"description": "No such customer"}},
+)
+def customer_calls(customer_id: str, conn: DbConn):
+    exists = conn.execute(
+        "SELECT 1 FROM customers WHERE id = ?", (customer_id,)
+    ).fetchone()
+    if not exists:
+        raise HTTPException(status_code=404, detail=f"no such customer: {customer_id}")
+
+    rows = conn.execute(
+        """
+        SELECT id, started_at, duration_seconds, intent_label,
+               resolution_status, summary, attention_score
+        FROM calls
+        WHERE customer_id = ?
+        ORDER BY started_at DESC
+        """,
+        (customer_id,),
+    ).fetchall()
+    return [CallSummary(**dict(r)) for r in rows]

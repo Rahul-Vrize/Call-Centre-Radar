@@ -1,6 +1,10 @@
 services:
+  # Offline LLM fallback. Not needed for transcription or the API — start it
+  # only when you're working on the reasoning layer without network:
+  #   docker compose --profile offline up -d ollama
   ollama:
     image: ollama/ollama:latest
+    profiles: ["offline"]
     ports:
       - "11434:11434"
     volumes:
@@ -13,18 +17,30 @@ services:
     env_file:
       - .env
     volumes:
+      # Source mounted so code changes don't need an image rebuild. The image
+      # still contains a full copy, so `docker compose up` works on a clone
+      # with no bind mount available.
+      - ./backend:/app
       - ./data:/app/data
-    depends_on:
-      - ollama
+      # faster-whisper downloads its model from HuggingFace on first use.
+      # Without this, every `docker compose run --rm` re-downloads it.
+      - hf_cache:/root/.cache/huggingface
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - "3000:3000"
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000
+      # Server-side only. The browser never talks to FastAPI directly — it hits
+      # /api/* and /audio/* on this origin, which next.config.ts rewrites here.
+      - BACKEND_URL=http://backend:8000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     depends_on:
       - backend
 
 volumes:
   ollama_models:
+  hf_cache:

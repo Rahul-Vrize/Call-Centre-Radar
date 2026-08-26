@@ -1,22 +1,44 @@
-// The rubric, made interactive: click a claim's chip to seek the audio to
-// its cited timestamp and highlight the quoted words in the transcript.
-interface Props {
-  timestamp: string;
-  quote: string;
-  verified: boolean;
-  onClick: () => void;
-}
+"use client";
 
-export default function EvidenceChip({ timestamp, quote, verified, onClick }: Props) {
+import { AlertTriangle, Quote } from "lucide-react";
+import type { Evidence } from "@/lib/types";
+import { parseTimestamp } from "@/lib/utils";
+import { usePlayer } from "./PlayerContext";
+
+/**
+ * The rubric, made interactive. "A claim with no evidence scores zero" — so a
+ * claim without an Evidence renders as an explicit gap, never as a bare
+ * assertion. A claim whose quote failed the fuzzy-match verifier renders as
+ * unverified rather than being silently shown as fact.
+ */
+export default function EvidenceChip({ evidence }: { evidence: Evidence | null }) {
+  const { seekTo } = usePlayer();
+
+  if (!evidence) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded border border-dashed border-neutral-300 px-2 py-0.5 font-mono text-xs text-neutral-400 dark:border-neutral-700">
+        no evidence
+      </span>
+    );
+  }
+
+  const { timestamp, quote, verified } = evidence;
+
   return (
     <button
-      onClick={onClick}
-      title={quote}
-      className={`text-xs font-mono px-2 py-0.5 rounded border ${
-        verified ? "border-amber-500 text-amber-700" : "border-red-500 text-red-700"
-      }`}
+      type="button"
+      onClick={() => seekTo(parseTimestamp(timestamp))}
+      title={`${verified ? "Verified" : "UNVERIFIED"} — "${quote}"`}
+      className={
+        "inline-flex max-w-full items-center gap-1.5 rounded border px-2 py-0.5 text-left font-mono text-xs transition hover:brightness-110 " +
+        (verified
+          ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300"
+          : "border-red-500/50 bg-red-500/10 text-red-700 dark:text-red-400")
+      }
     >
-      {verified ? "◐" : "⚠"} {timestamp}
+      {verified ? <Quote size={11} /> : <AlertTriangle size={11} />}
+      <span className="tabular-nums">{timestamp}</span>
+      <span className="truncate font-sans italic opacity-80">“{quote}”</span>
     </button>
   );
 }

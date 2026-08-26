@@ -1,24 +1,56 @@
-// The 0-100 needs-attention score with its contributing factors on hover,
-// each factor optionally carrying its own EvidenceChip.
-interface Factor {
-  factor: string;
-  weight: number;
-}
+"use client";
+
+import type { AttentionFactor } from "@/lib/types";
+import { attentionTone, cn } from "@/lib/utils";
+import EvidenceChip from "./EvidenceChip";
 
 interface Props {
   score: number | null;
-  factors: Factor[];
+  factors?: AttentionFactor[];
 }
 
-export default function AttentionBadge({ score, factors }: Props) {
+/**
+ * The 0-100 score is computed in backend/app/pipeline/attention_score.py from
+ * documented weights — the LLM only narrates the factors. Showing the factors
+ * and their weights alongside the number is what makes it auditable rather
+ * than an opaque verdict.
+ */
+export default function AttentionBadge({ score, factors = [] }: Props) {
   return (
-    <div className="p-4 border rounded">
-      <span className="font-mono">attention {score ?? "—"}</span>
-      <ul className="text-sm text-gray-600">
-        {factors.map((f) => (
-          <li key={f.factor}>{f.factor}</li>
-        ))}
-      </ul>
+    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="flex items-baseline gap-3">
+        <span
+          className={cn(
+            "rounded-md border px-3 py-1 font-mono text-2xl font-semibold tabular-nums",
+            attentionTone(score),
+          )}
+        >
+          {score ?? "—"}
+        </span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          needs-attention score
+        </span>
+      </div>
+
+      {factors.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {factors.map((f) => (
+            <li key={f.factor} className="text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-neutral-400">
+                  {(f.weight * 100).toFixed(0)}%
+                </span>
+                <span className="flex-1">{f.factor}</span>
+              </div>
+              {f.evidence && (
+                <div className="ml-12 mt-1">
+                  <EvidenceChip evidence={f.evidence} />
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
