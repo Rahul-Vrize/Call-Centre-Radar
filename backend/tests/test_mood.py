@@ -106,3 +106,32 @@ def test_agent_escalation_language_is_ignored():
     offering to transfer is not a red flag."""
     turns = [turn("agent", "I can put you through to a supervisor if you like")]
     assert escalation_hits(turns) == []
+
+
+# --- refusal is not a mood -----------------------------------------------
+
+
+def test_polite_refusals_are_not_treated_as_negative_mood():
+    """VADER cannot tell "no" the refusal from "no" the complaint. Ending a
+    call with "Nope, that's it." is what a *satisfied* customer sounds like."""
+    from app.pipeline.mood import is_mere_decline
+
+    for text in ["Nope, that's it.", "No thanks.", "no thank you.",
+                 "No, not today, thank you.", "Nope, that's all."]:
+        assert is_mere_decline(text), text
+
+
+def test_real_complaints_survive_the_refusal_filter():
+    from app.pipeline.mood import is_mere_decline
+
+    for text in ["This is ridiculous", "This is absolutely unacceptable",
+                 "I am furious", "Worst experience ever"]:
+        assert not is_mere_decline(text), text
+
+
+def test_a_complaint_that_starts_with_no_is_still_a_complaint():
+    """The discriminating case: strip the refusal word and what remains is
+    still angry, so the turn is kept."""
+    from app.pipeline.mood import is_mere_decline
+
+    assert not is_mere_decline("No, this is completely unacceptable")

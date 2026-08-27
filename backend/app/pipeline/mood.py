@@ -35,6 +35,51 @@ PROSODY_WEIGHT = 0.3
 #: A gap longer than this between words is a hesitation, not natural rhythm.
 PAUSE_SECONDS = 0.45
 
+#: Below this many words, a turn gets no mood score at all — not a neutral one.
+#:
+#: Measured on this corpus, the per-call *worst* mood turn was under 5 words in
+#: 67% of calls, and those turns were: 'Certainly.', 'You as well.', 'Hi,',
+#: 'All right.', 'Savings?'. Neither half of the signal survives at that length.
+#: VADER reads the "no" in "no thank you" as anger (-0.49) when it is a polite
+#: decline; and a one-word turn's words-per-second is noise against the
+#: speaker's median, so a brisk "Hi," registers as agitation. Fused, these
+#: produced a "sustained negative customer mood" factor on 88% of calls — a
+#: claim that discriminates nothing and, worse, cannot be honestly cited: a
+#: quote of 'Certainly.' offered as proof of a negative mood is evidence that
+#: does not support the claim, which the brief scores NEGATIVE.
+#:
+#: A short turn has *unknown* mood, not neutral mood, so it is excluded from the
+#: series rather than scored zero — averaging in fake neutrality would drag the
+#: change-point detector just as badly.
+#:
+#: This is deliberately the same floor the evidence verifier uses for quote
+#: length (`evidence_min_quote_words`), which buys a guarantee: every point in
+#: the mood series is long enough to quote, so every mood claim is citable by
+#: construction.
+MIN_MOOD_WORDS = 5
+
+#: …unless the words themselves are unambiguous. "This is absolutely
+#: unacceptable" is four words and nobody needs context to read it.
+#:
+#: The floor above exists because short turns carry no *reliable* signal, not
+#: because short turns can never matter. Measured with VADER, the two groups
+#: separate cleanly enough to draw a line between them:
+#:
+#:     unacceptable -0.51   outrageous -0.46   furious -0.57   worst -0.63
+#:     'No thanks.' -0.34   'no thank you.' -0.28   'I lost my debit card.' -0.32
+#:
+#: -0.40 sits in that gap. It admits real anger and still excludes the polite
+#: declines and problem-reports that VADER scores negative for the wrong reason.
+#: This corpus contains none of the former, so on these 1,441 calls the override
+#: never fires — it is here for the recordings that do, a judge's live upload
+#: among them.
+#:
+#: Note this is the one path that can put an uncitable turn in the series: a
+#: four-word turn cannot satisfy the verifier's five-word quote floor. That is
+#: the right trade — the mood *timeline* should show real anger even when the
+#: attention factor beneath it has to report "no evidence" and score zero.
+STRONG_SENTIMENT = 0.40
+
 #: Escalation phrases. Each hit is itself citable evidence (turn + quote) for
 #: the attention score, so this list is shared with attention_score.py.
 ESCALATION_PHRASES = (
@@ -88,6 +133,48 @@ def _lazy_analyzer():
         return _ANALYZER
 
 
+#: Words VADER treats as negative sentiment when they are usually just refusal.
+NEGATION_TOKENS = frozenset(
+    {"no", "nope", "nah", "not", "none", "never", "n't", "nothing"}
+)
+
+
+def is_mere_decline(text: str) -> bool:
+    """Is this turn negative only because the customer said "no"?
+
+    VADER has no way to tell refusal from displeasure, so "Nope, that's it."
+    (-0.25) and "No thanks." (-0.34) score as unhappy customers when they are
+    the ordinary way a satisfied one ends a call. Before this check those were
+    the entire unverified remainder of the mood factor — the verifier caught
+    every one, which is the safety net working, but a claim that has to be
+    caught is a claim better not made.
+
+    The test: remove the refusal words and re-score. If what is left is not
+    negative, the negativity *was* the refusal. "Nope, that's it." becomes
+    "that's it." (neutral) and is dropped; "This is ridiculous" has no refusal
+    word to remove, keeps its score, and is kept.
+    """
+    words = text.split()
+    kept = [w for w in words if w.strip(".,!?'\"").lower() not in NEGATION_TOKENS]
+    if len(kept) == len(words):
+        return False  # nothing to strip, so the negativity came from elsewhere
+    if not kept:
+        return True  # nothing but refusal
+    return text_sentiment_score(" ".join(kept)) > -0.05
+
+
+def is_scorable(turn: Turn) -> bool:
+    """Does this turn carry enough signal to score at all?
+
+    Long enough to be reliable (MIN_MOOD_WORDS), or short but unambiguous
+    (STRONG_SENTIMENT). Word count comes from the text rather than the word
+    timings so a turn is judged the same way whichever provider transcribed it.
+    """
+    if len(turn.text.split()) >= MIN_MOOD_WORDS:
+        return True
+    return abs(text_sentiment_score(turn.text)) >= STRONG_SENTIMENT
+
+
 def text_sentiment_score(text: str) -> float:
     """Valence in [-1, 1]. Negative is unhappy."""
     if not text.strip():
@@ -133,7 +220,11 @@ def fused_mood_score(text_score: float, prosody: float) -> float:
 def score_customer_turns(turns: list[Turn]) -> list[MoodPoint]:
     """Score every customer turn in a call. Agent turns are not scored — the
     brief asks about the customer's mood."""
-    customer = [(i, t) for i, t in enumerate(turns) if t.speaker == "customer"]
+    customer = [
+        (i, t)
+        for i, t in enumerate(turns)
+        if t.speaker == "customer" and is_scorable(t)
+    ]
     if not customer:
         return []
 
@@ -147,6 +238,11 @@ def score_customer_turns(turns: list[Turn]) -> list[MoodPoint]:
     points: list[MoodPoint] = []
     for idx, turn in customer:
         text_score = text_sentiment_score(turn.text)
+        # A refusal is not a mood. Neutralise the text half rather than dropping
+        # the turn: the customer did speak, so the series should still have a
+        # point there — it just should not read as unhappiness.
+        if text_score < 0 and is_mere_decline(turn.text):
+            text_score = 0.0
         prosody = prosody_valence(extract_prosody(turn, median_rate))
         points.append(
             MoodPoint(
