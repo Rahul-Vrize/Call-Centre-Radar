@@ -112,15 +112,95 @@ def is_citable_shift(turn: Turn) -> bool:
     )
 
 
+#: A prior call only counts as the same complaint if it's recent. Two calls
+#: about card replacement eleven weeks apart are two separate incidents.
+REPEAT_WINDOW_DAYS = 30
+
+#: A reported mood shift must land the customer in genuinely negative territory,
+#: not merely lower than they started.
+#:
+#: This is the filter that matters most on this corpus. Change-point detection
+#: finds where a series moves, but movement is not distress: measured across all
+#: 8,866 scored turns, the mean mood is +0.05 with a standard deviation of 0.18,
+#: and only 0.2% of turns fall below -0.35. These are scripted, uniformly polite
+#: transactional calls — there is almost no negative mood present to find.
+#:
+#: Without this threshold the detector reports statistical wobble, and because
+#: dictated data ("The address is 605 Main Street,") has unusual speaking rates,
+#: that is exactly what it cites. Requiring real negativity means the feature
+#: fires rarely and honestly rather than often and wrongly.
+SHIFT_NEGATIVE_FLOOR = -0.15
+
+
+def detect_reportable_shift(points, turns, stored):
+    """The mood shift, if there is one worth reporting.
+
+    Three filters, each added after measuring a specific false positive on this
+    corpus:
+
+    1. **Substantive turns only.** Pleasantries and dictated data are excluded
+       from the series. Measured: the most-cited shift turns were "Thank you.",
+       "Main Street," and "The zip code is 70021." — VADER scores a goodbye at
+       +0.53, which against an otherwise near-zero series is the largest
+       movement in the call.
+
+    2. **Negative shifts only.** A customer cheering up as the call closes is
+       not what "needs a manager's attention" means, and the attention score
+       already ignores positive deltas. Reporting them inflated the count with
+       findings nobody would act on.
+
+    3. **Citable turns only.** A breakpoint we cannot quote is a claim without
+       evidence — precisely what the brief scores zero.
+
+    The result is far fewer shifts. That is the honest outcome: these calls are
+    scripted and uniformly polite, and most contain no mood change to find.
+    """
+    series = mood.substantive_points(points, turns)
+    shift = changepoint.find_mood_shift(
+        [p.score for p in series], [p.turn_index for p in series]
+    )
+    if shift is None:
+        return None
+    if shift.delta > 0:
+        return None
+    if shift.after_mean > SHIFT_NEGATIVE_FLOOR:
+        # Lower than before, but still neutral. Not a mood shift a manager
+        # would recognise, and not something we can defend as evidence.
+        return None
+    if not is_citable_shift(stored[shift.turn_index].turn):
+        return None
+    return shift
+
+
 def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
-    """How many earlier calls this customer made."""
+    """How many earlier calls this customer made about the SAME issue.
+
+    The attention factor this feeds is labelled "repeat contact about the same
+    issue", so it has to actually check the issue. It previously counted any
+    earlier call by the customer, which was both an unsupported claim and
+    useless as a signal: every one of the 100 customers in this corpus is a
+    repeat caller (mean 14.4 calls), so the factor fired on essentially
+    everything and discriminated nothing.
+
+    Same customer + same issue cluster + within REPEAT_WINDOW_DAYS is the thing
+    the brief actually asks about — "the complaint that came up nine times this
+    week". Returns 0 when clustering hasn't run yet, so the factor simply
+    doesn't fire rather than reverting to the inaccurate behaviour.
+    """
     row = conn.execute(
         """
-        SELECT COUNT(*) AS n FROM calls
-        WHERE customer_id = (SELECT customer_id FROM calls WHERE id = ?)
-          AND started_at < (SELECT started_at FROM calls WHERE id = ?)
+        SELECT COUNT(*) AS n
+        FROM calls prior
+        JOIN call_clusters prior_cluster ON prior_cluster.call_id = prior.id
+        WHERE prior.customer_id = (SELECT customer_id FROM calls WHERE id = :id)
+          AND prior.started_at  < (SELECT started_at  FROM calls WHERE id = :id)
+          AND prior_cluster.cluster_id = (
+                SELECT cluster_id FROM call_clusters WHERE call_id = :id
+              )
+          AND julianday((SELECT started_at FROM calls WHERE id = :id))
+              - julianday(prior.started_at) <= :window
         """,
-        (call_id, call_id),
+        {"id": call_id, "window": REPEAT_WINDOW_DAYS},
     ).fetchone()
     return row["n"] if row else 0
 
@@ -178,13 +258,7 @@ def prepare_analysis(
 
     # --- Stage 4: mood series + change point ------------------------------
     points = mood.score_customer_turns(turns)
-    shift = changepoint.find_mood_shift(
-        [p.score for p in points], [p.turn_index for p in points]
-    )
-    # A detected breakpoint on an un-quotable turn is a claim without evidence,
-    # which is exactly what the brief scores zero. Drop it.
-    if shift is not None and not is_citable_shift(stored[shift.turn_index].turn):
-        shift = None
+    shift = detect_reportable_shift(points, turns, stored)
     mood_updates = [(p.score, stored[p.turn_index].db_id) for p in points]
     worst_mood = min((p.score for p in points), default=None)
 
@@ -332,7 +406,98 @@ def analyze_call(
     conn: sqlite3.Connection,
     call_id: str,
     median_handle_time: float,
-    repeat_count: int = 0,   # kept for call-site compatibility; derived internally
 ) -> dict:
     """Analyse and persist one call, single-threaded."""
     return persist_analysis(conn, prepare_analysis(conn, call_id, median_handle_time))
+
+
+def recompute_attention(conn: sqlite3.Connection, median_handle_time: float) -> dict:
+    """Re-score attention for every analysed call, without touching the LLM.
+
+    Needed because repeat-contact detection depends on issue clusters, and
+    clustering can only run after every call has a summary to cluster. So the
+    ordering is: analyse -> cluster -> re-score. Everything this needs (mood
+    series, escalation hits, resolution status) is either stored or recomputed
+    locally in milliseconds, so a full re-score over 1,441 calls takes seconds
+    rather than the ~13 minutes a re-analysis would.
+    """
+    rows = conn.execute(
+        """
+        SELECT id, resolution_status, duration_seconds, intent_label
+        FROM calls WHERE analyzed_at IS NOT NULL
+        """
+    ).fetchall()
+
+    changed = 0
+    repeats = 0
+
+    for row in rows:
+        call_id = row["id"]
+        stored = load_turns(conn, call_id)
+        if not stored:
+            continue
+        turns = [s.turn for s in stored]
+
+        points = mood.score_customer_turns(turns)
+        shift = detect_reportable_shift(points, turns, stored)
+
+        repeat_count = prior_call_count(conn, call_id)
+        if repeat_count:
+            repeats += 1
+
+        attention = attention_score.compute_attention_score(
+            resolution_status=row["resolution_status"],
+            worst_mood=min((p.score for p in points), default=None),
+            mood_shift_delta=shift.delta if shift else None,
+            escalation_hits=mood.escalation_hits(turns),
+            handle_time_seconds=row["duration_seconds"] or 0.0,
+            median_handle_time_seconds=median_handle_time,
+            is_repeat_contact=repeat_count > 0,
+            repeat_count=repeat_count,
+        )
+
+        factors = [
+            {"factor": f.factor, "weight": f.weight,
+             "evidence": _factor_evidence(conn, call_id, f, stored)}
+            for f in attention.factors
+        ]
+
+        with conn:
+            conn.execute(
+                """
+                UPDATE calls SET attention_score = ?, attention_factors_json = ?
+                WHERE id = ?
+                """,
+                (attention.score, json.dumps(factors), call_id),
+            )
+        changed += 1
+
+    return {"rescored": changed, "with_repeat_contact": repeats}
+
+
+def _factor_evidence(conn, call_id: str, factor, stored: list[StoredTurn]):
+    """Reuse the citation already stored for this factor, if there is one.
+
+    Re-verifying here would mean re-running the embedding model for every
+    factor on every call; the quote hasn't changed, so the stored verdict is
+    still valid.
+    """
+    if factor.turn_index is None or not (0 <= factor.turn_index < len(stored)):
+        return None
+    target = stored[factor.turn_index]
+    row = conn.execute(
+        """
+        SELECT timestamp, quote, verified FROM evidence
+        WHERE call_id = ? AND turn_id = ? AND claim_type = 'attention_factor'
+        LIMIT 1
+        """,
+        (call_id, target.db_id),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "turn_id": target.db_id,
+        "timestamp": row["timestamp"],
+        "quote": row["quote"],
+        "verified": bool(row["verified"]),
+    }

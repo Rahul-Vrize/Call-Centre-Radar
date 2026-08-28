@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api import agents, attention, calls, customers, ingest, trends
+from app.api import agents, attention, calls, customers, ingest, repeats, trends
 from app.config import settings
 from app.db.session import init_db
 
@@ -32,6 +32,7 @@ app.include_router(calls.router, prefix="/calls", tags=["calls"])
 app.include_router(attention.router, prefix="/attention", tags=["attention"])
 app.include_router(trends.router, prefix="/trends", tags=["trends"])
 app.include_router(agents.router, prefix="/agents", tags=["agents"])
+app.include_router(repeats.router, prefix="/repeat-contacts", tags=["repeats"])
 app.include_router(ingest.router, prefix="/ingest", tags=["ingest"])
 
 # The recordings, served for the dashboard's waveform player. Starlette raises

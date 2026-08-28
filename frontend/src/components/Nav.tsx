@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Headphones, Radar, TrendingUp, Upload, Users } from "lucide-react";
+import { Activity, Headphones, PhoneCall, Radar, TrendingUp, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/trends", label: "Trends", icon: TrendingUp },
   { href: "/agents", label: "Agents", icon: Headphones },
+  { href: "/repeat-contacts", label: "Repeats", icon: PhoneCall },
   { href: "/ingest", label: "Analyse a call", icon: Upload },
 ] as const;
 

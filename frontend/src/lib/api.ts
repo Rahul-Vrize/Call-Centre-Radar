@@ -1,5 +1,7 @@
 import type {
+  AgentIssueStat,
   AgentStats,
+  RepeatContact,
   CallDetail,
   CallSummary,
   Customer,
@@ -81,3 +83,15 @@ export const getClusterCalls = (clusterId: number) =>
   apiGet<CallSummary[]>(`/trends/${clusterId}/calls`);
 
 export const getAgents = () => apiGet<AgentStats[]>("/agents");
+
+export const getAgentIssues = (agentId: string) =>
+  apiGet<AgentIssueStat[]>(`/agents/${encodeURIComponent(agentId)}/issues`);
+
+export const getAgentCalls = (agentId: string, clusterId?: number) =>
+  apiGet<CallSummary[]>(
+    `/agents/${encodeURIComponent(agentId)}/calls` +
+      (clusterId != null ? `?cluster_id=${clusterId}` : ""),
+  );
+
+export const getRepeatContacts = () =>
+  apiGet<RepeatContact[]>("/repeat-contacts");

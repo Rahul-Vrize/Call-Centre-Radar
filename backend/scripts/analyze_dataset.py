@@ -23,7 +23,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.db.session import get_connection, init_db                       # noqa: E402
 from app.pipeline import clustering                                      # noqa: E402
-from app.pipeline.analyze import persist_analysis, prepare_analysis      # noqa: E402
+from app.pipeline.analyze import (                                     # noqa: E402
+    persist_analysis, prepare_analysis, recompute_attention,
+)
 
 
 def median_handle_time(conn) -> float:
@@ -79,6 +81,22 @@ def run_clustering(conn) -> None:
         print(f"    {n:4d}  {name}")
 
 
+def _rescore(conn) -> None:
+    """Re-score attention now that clusters exist.
+
+    Repeat-contact detection asks "has this customer called about THIS issue
+    before", which needs the issue clusters — and those can only be built after
+    every call has a summary. Hence: analyse, cluster, then re-score. No LLM
+    calls, so it's seconds rather than minutes.
+    """
+    stats = recompute_attention(conn, median_handle_time(conn))
+    print(
+        f"\nattention re-scored with issue-aware repeat contact: "
+        f"{stats['rescored']} calls, {stats['with_repeat_contact']} flagged as "
+        f"a repeat contact on the same issue"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None)
@@ -99,6 +117,7 @@ def main() -> int:
 
     if args.cluster_only:
         run_clustering(conn)
+        _rescore(conn)
         conn.close()
         return 0
 
@@ -167,6 +186,9 @@ def main() -> int:
 
     if not args.skip_cluster and done:
         run_clustering(conn)
+        # Repeat-contact detection needs clusters, which only exist now. Cheap
+        # (no LLM), so re-score every call rather than leaving the factor cold.
+        _rescore(conn)
 
     conn.close()
     return 1 if failed and not done else 0
