@@ -114,7 +114,15 @@ class Settings(BaseSettings):
     evidence_match_threshold: int = 85
     evidence_min_quote_words: int = 5  # short quotes inflate partial_ratio
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Absolute, not "./.env" — pydantic-settings resolves a relative env_file
+    # against the working directory, which is the exact bug REPO_ROOT exists to
+    # avoid, one step earlier: a stale backend/.env (a leftover local copy, not
+    # the real one at the repo root, gitignored so nothing caught it) silently
+    # won over the real .env whenever uvicorn ran from backend/, with no error
+    # — just the credentials and provider settings from a copy made days
+    # earlier. Anchoring here means there is exactly one .env this process can
+    # ever load, regardless of the caller's cwd.
+    model_config = SettingsConfigDict(env_file=str(REPO_ROOT / ".env"), extra="ignore")
 
     def model_post_init(self, __context) -> None:
         object.__setattr__(self, "database_path", _anchor(self.database_path))
