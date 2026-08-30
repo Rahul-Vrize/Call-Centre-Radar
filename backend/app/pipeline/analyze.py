@@ -173,6 +173,9 @@ def detect_reportable_shift(points, turns, stored):
 
 
 def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
+<<<<<<< HEAD
+    """How many earlier calls this customer made, on any subject."""
+=======
     """How many earlier calls this customer made about the SAME issue.
 
     The attention factor this feeds is labelled "repeat contact about the same
@@ -187,6 +190,7 @@ def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
     week". Returns 0 when clustering hasn't run yet, so the factor simply
     doesn't fire rather than reverting to the inaccurate behaviour.
     """
+>>>>>>> 8a8a291c25b82b4c97eff962844786f4a87dc6f4
     row = conn.execute(
         """
         SELECT COUNT(*) AS n
@@ -201,6 +205,36 @@ def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
               - julianday(prior.started_at) <= :window
         """,
         {"id": call_id, "window": REPEAT_WINDOW_DAYS},
+    ).fetchone()
+    return row["n"] if row else 0
+
+
+def prior_same_issue_count(conn: sqlite3.Connection, call_id: str, intent_label: str) -> int:
+    """How many earlier calls this customer made *about this same issue*.
+
+    The attention factor above this reads "repeat contact about the same issue",
+    so that is what has to be counted. Counting every prior call instead — which
+    is what shipped — made the factor fire on 93% of the corpus, because 1,441
+    calls are spread over 100 customers and almost everyone has phoned before.
+    A signal that is true of nearly every row cannot rank anything, and the
+    "about the same issue" half of the sentence was simply never checked.
+
+    Matching on intent restores it to 43% and, more importantly, makes the claim
+    mean what it says. Intent is the right key rather than the issue cluster:
+    clusters are derived from summary embeddings and drift with re-clustering,
+    while intent is per-call, stable, and already the thing the customer asked
+    for.
+    """
+    if not intent_label:
+        return 0
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS n FROM calls
+        WHERE customer_id = (SELECT customer_id FROM calls WHERE id = ?)
+          AND started_at < (SELECT started_at FROM calls WHERE id = ?)
+          AND intent_label = ?
+        """,
+        (call_id, call_id, intent_label),
     ).fetchone()
     return row["n"] if row else 0
 
@@ -254,13 +288,25 @@ def prepare_analysis(
     duration = conn.execute(
         "SELECT duration_seconds FROM calls WHERE id = ?", (call_id,)
     ).fetchone()
-    repeat_count = prior_call_count(conn, call_id)
 
     # --- Stage 4: mood series + change point ------------------------------
     points = mood.score_customer_turns(turns)
     shift = detect_reportable_shift(points, turns, stored)
     mood_updates = [(p.score, stored[p.turn_index].db_id) for p in points]
-    worst_mood = min((p.score for p in points), default=None)
+
+    # Keep the turn the minimum came from, not just the value — the attention
+    # factor it feeds has to cite the moment, and "worst mood" is meaningless to
+    # a manager without the words that earned it.
+    worst_point = min(points, key=lambda p: p.score, default=None)
+    worst_mood = worst_point.score if worst_point else None
+    # Only cite a turn substantial enough to clear the verifier's quote-length
+    # floor, for the same reason is_citable_shift exists: a citation of "Okay."
+    # is a citation nobody can check.
+    worst_mood_turn_index = (
+        worst_point.turn_index
+        if worst_point and is_citable_shift(stored[worst_point.turn_index].turn)
+        else None
+    )
 
     # --- Stage 5: grounded reasoning (the slow, network-bound part) -------
     result = reasoning.analyze_call(turns)
@@ -306,6 +352,9 @@ def prepare_analysis(
         mood_shift_db_id = stored[shift.turn_index].db_id
 
     # --- Attention score --------------------------------------------------
+    # Counted here rather than earlier because it needs the intent the model
+    # just returned.
+    repeat_count = prior_same_issue_count(conn, call_id, result.intent.label)
     hits = mood.escalation_hits(turns)
     attention = attention_score.compute_attention_score(
         resolution_status=result.resolution.label,
@@ -316,17 +365,35 @@ def prepare_analysis(
         median_handle_time_seconds=median_handle_time,
         is_repeat_contact=repeat_count > 0,
         repeat_count=repeat_count,
+        resolution_turn_index=result.resolution.turn_index,
+        worst_mood_turn_index=worst_mood_turn_index,
+        mood_shift_turn_index=shift.turn_index if shift else None,
+        intent_turn_index=result.intent.turn_index,
     )
+
+    # Citations built above (intent, resolution, mood shift) are reused here
+    # rather than rebuilt: the "issue unresolved" factor and the resolution
+    # judgment cite the same moment, and storing that twice would inflate the
+    # evidence count without adding one verifiable fact.
+    by_turn = {row.turn_db_id: row for row in evidence}
 
     factors_json = []
     for factor in attention.factors:
         evidence_payload = None
-        if factor.turn_index is not None:
-            fact_row = _build_evidence(
-                "attention_factor", factor.factor, stored, factor.turn_index
-            )
+        if factor.turn_index is not None and 0 <= factor.turn_index < len(stored):
+            fact_row = by_turn.get(stored[factor.turn_index].db_id)
+            if fact_row is None:
+                fact_row = _build_evidence(
+                    "attention_factor",
+                    factor.factor,
+                    stored,
+                    factor.turn_index,
+                    check_support=factor.check_support,
+                )
+                if fact_row:
+                    evidence.append(fact_row)
+                    by_turn[fact_row.turn_db_id] = fact_row
             if fact_row:
-                evidence.append(fact_row)
                 evidence_payload = {
                     "turn_id": fact_row.turn_db_id,
                     "timestamp": fact_row.timestamp,

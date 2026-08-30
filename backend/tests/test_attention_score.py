@@ -98,3 +98,80 @@ def test_escalation_factor_carries_a_citable_turn():
 @pytest.mark.parametrize("status", ["resolved", "partial", "unresolved", None])
 def test_handles_every_resolution_status(status):
     assert 0 <= score(resolution_status=status) <= 100
+
+
+# --- citations -----------------------------------------------------------
+# "A claim with no evidence scores zero." The attention score is a claim, and
+# so is every factor under it, so each one that can point at a spoken moment
+# must carry the turn to cite.
+
+
+def factors(**kwargs):
+    defaults = dict(
+        resolution_status="resolved",
+        worst_mood=0.0,
+        mood_shift_delta=None,
+        escalation_hits=[],
+        handle_time_seconds=60.0,
+        median_handle_time_seconds=60.0,
+        is_repeat_contact=False,
+    )
+    return compute_attention_score(**{**defaults, **kwargs}).factors
+
+
+def one(name_fragment, **kwargs):
+    matches = [f for f in factors(**kwargs) if name_fragment in f.factor]
+    assert matches, f"no factor matching {name_fragment!r} in {[f.factor for f in factors(**kwargs)]}"
+    return matches[0]
+
+
+def test_unresolved_factor_cites_the_resolution_turn():
+    f = one("issue unresolved", resolution_status="unresolved", resolution_turn_index=12)
+    assert f.turn_index == 12
+
+
+def test_negative_mood_factor_cites_the_worst_mood_turn():
+    f = one("negative customer mood", worst_mood=-0.7, worst_mood_turn_index=4)
+    assert f.turn_index == 4
+    # Our own minimum picked this turn, so entailment-checking it against the
+    # abstract factor text is a category error — the citation is a pointer.
+    assert f.check_support is False
+
+
+def test_mood_shift_factor_cites_the_change_point_turn():
+    f = one("mood turned negative", mood_shift_delta=-0.6, mood_shift_turn_index=9)
+    assert f.turn_index == 9
+    assert f.check_support is False
+
+
+def test_long_call_factor_stays_uncited():
+    """A long call is a fact about the clock, not about anything anyone said.
+    Attaching a quote would be evidence that does not support the claim, which
+    the brief scores NEGATIVE — strictly worse than the zero for staying quiet."""
+    f = one("unusually long call", handle_time_seconds=300.0, median_handle_time_seconds=60.0)
+    assert f.turn_index is None
+
+
+def test_missing_turn_index_degrades_rather_than_inventing_one():
+    """Callers that cannot supply a turn still get a factor — just an uncited
+    one. Silently fabricating an index would be far worse."""
+    f = one("issue unresolved", resolution_status="unresolved")
+    assert f.turn_index is None
+
+
+def test_repeat_contact_factor_cites_the_intent_turn():
+    """The factor says "about the same issue", so it cites the customer stating
+    that issue. The count of earlier calls is a database fact carried in the
+    factor text — a quote cannot prove "again", only "about this"."""
+    f = one("repeat contact", is_repeat_contact=True, repeat_count=2, intent_turn_index=1)
+    assert f.turn_index == 1
+    assert "2 earlier call" in f.factor
+
+
+def test_mood_factor_stays_silent_on_mild_negativity():
+    """VADER scores 'I lost my debit card' and 'No thanks' negative because of
+    the topic and the word "no", not because the customer is unhappy. Claiming
+    those as negative mood, and citing them, is evidence that does not support
+    the claim — which scores worse than saying nothing."""
+    assert not [f for f in factors(worst_mood=-0.10) if "negative customer mood" in f.factor]
+    assert [f for f in factors(worst_mood=-0.55) if "negative customer mood" in f.factor]

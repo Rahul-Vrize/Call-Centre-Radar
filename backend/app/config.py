@@ -1,5 +1,61 @@
 """Central runtime configuration, loaded once from the environment."""
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+#: Where `./data/...` points.
+#:
+#: This file lives at .../app/config.py in every case, but "the directory two
+#: levels up" means two DIFFERENT things depending on how it's run, because the
+#: Docker bind mount flattens the layout:
+#:
+#:   native:    <repo>/backend/app/config.py   -> data/ is <repo>/data        (2 up)
+#:   container: /app/app/config.py             -> data/ is bind-mounted /app/data (1 up)
+#:
+#: (docker-compose.yml mounts `.\backend:/app`, so backend/'s *contents* land
+#: directly at /app — there is no nested backend/ inside the container — and
+#: `./data:/app/data` is a second, separate mount alongside it.)
+#:
+#: A fixed parent count can only be right for one of those, so this picks
+#: between the two candidates rather than assuming one:
+#:
+#: 1. **docker-compose.yml exists at the candidate.** This is the unambiguous
+#:    signal for "this is the native repo root" — the Docker build context is
+#:    `./backend` only, so docker-compose.yml is never copied or mounted into
+#:    the container. Checked first, and alone, because the alternative — "does
+#:    a data/ directory exist here" — is spoofable: `app.main`'s StaticFiles
+#:    mount unconditionally creates `<data_dir>/audio/` if it's missing, so a
+#:    single wrong resolution creates the very directory that would make the
+#:    next lookup confirm the same wrong answer. That happened during
+#:    development: a stray `backend/data/audio/` from one bad run kept getting
+#:    picked up by an earlier, existence-only version of this check.
+#: 2. **Neither candidate has docker-compose.yml** (both are inside a
+#:    container). Fall back to whichever has an actual `data/` — safe here
+#:    specifically because the container's /app/data is a docker-compose bind
+#:    mount, not something application code can accidentally create.
+#: 3. **Neither signal fires** — a fresh clone, dataset not unzipped yet.
+#:    Default to the native convention.
+def _find_repo_root() -> Path:
+    here = Path(__file__).resolve()
+    candidates = (here.parents[1], here.parents[2])
+
+    for candidate in candidates:
+        if (candidate / "docker-compose.yml").exists():
+            return candidate
+    for candidate in candidates:
+        if (candidate / "data").is_dir():
+            return candidate
+    return here.parents[2]
+
+
+REPO_ROOT = _find_repo_root()
+
+
+def _anchor(value: str) -> str:
+    """Resolve a relative configured path against REPO_ROOT. Absolute paths and
+    anything set explicitly to an absolute location are left alone."""
+    path = Path(value)
+    return str(path if path.is_absolute() else (REPO_ROOT / path).resolve())
 
 
 class Settings(BaseSettings):
@@ -44,6 +100,9 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:8b"
 
     # --- Storage ---
+    # Relative paths resolve against REPO_ROOT (see below), not the working
+    # directory, so `uvicorn app.main:app` behaves the same from backend/ as it
+    # does from the repo root or inside the container.
     database_path: str = "./data/radar.db"
     data_dir: str = "./data"
 
@@ -55,7 +114,19 @@ class Settings(BaseSettings):
     evidence_match_threshold: int = 85
     evidence_min_quote_words: int = 5  # short quotes inflate partial_ratio
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Absolute, not "./.env" — pydantic-settings resolves a relative env_file
+    # against the working directory, which is the exact bug REPO_ROOT exists to
+    # avoid, one step earlier: a stale backend/.env (a leftover local copy, not
+    # the real one at the repo root, gitignored so nothing caught it) silently
+    # won over the real .env whenever uvicorn ran from backend/, with no error
+    # — just the credentials and provider settings from a copy made days
+    # earlier. Anchoring here means there is exactly one .env this process can
+    # ever load, regardless of the caller's cwd.
+    model_config = SettingsConfigDict(env_file=str(REPO_ROOT / ".env"), extra="ignore")
+
+    def model_post_init(self, __context) -> None:
+        object.__setattr__(self, "database_path", _anchor(self.database_path))
+        object.__setattr__(self, "data_dir", _anchor(self.data_dir))
 
 
 settings = Settings()

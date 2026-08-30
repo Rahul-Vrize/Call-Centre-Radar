@@ -42,6 +42,9 @@ data/work/
 !data/cache/**
 *.db-wal
 *.db-shm
+# Snapshots taken before a destructive backfill. Local safety nets, not history.
+*.backup-*
+*.db.bak
 
 # Pipeline working files — split-channel wavs and other transient output
 # produced while processing a call (see app/pipeline/audio.py)
