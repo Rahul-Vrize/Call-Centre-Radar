@@ -24,9 +24,36 @@ export function parseTimestamp(timestamp: string): number {
   return parts.reduce((acc, part) => acc * 60 + part, 0);
 }
 
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+/** "2 Jun 2020, 01:04" — always UTC, always the same string.
+ *
+ *  Deliberately NOT `toLocaleString()`. That formats in the *runtime's* locale
+ *  and timezone, so the server (a UTC container) and the browser (IST, en-US)
+ *  produced different text for the same instant — "2/6/2020, 6:34:32 am" vs
+ *  "6/2/2020, 1:04:32 AM" — which React reports as a hydration mismatch and
+ *  then re-renders the whole subtree to recover.
+ *
+ *  Rendering UTC explicitly also removes the day/month ambiguity: these are
+ *  2020 call records, and "6/2/2020" meaning two different dates depending on
+ *  who is looking is worse than a slightly less familiar format.
+ */
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
+  if (Number.isNaN(d.getTime())) return iso;
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${hh}:${mm}`;
+}
+
+/** Date only — "2 Jun 2020". Same UTC-fixed reasoning as above. */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 /** Shared colour ramp for the 0-100 needs-attention score. */

@@ -78,6 +78,17 @@ export interface Customer {
   last_contact: string | null;
 }
 
+export interface AgentIssueStat {
+  cluster_id: number;
+  label: string;
+  call_count: number;
+  resolution_rate: number;
+  /** Percentage points vs this agent's OWN overall rate. Comparing an agent
+   *  against themselves separates "this issue is hard for them" from "this
+   *  agent is weaker overall". */
+  delta_vs_self: number;
+}
+
 export interface AgentStats {
   id: string;
   name: string;
@@ -85,6 +96,21 @@ export interface AgentStats {
   avg_handle_time_seconds: number;
   resolution_rate: number;
   avg_attention_score: number;
+  /** The issue this agent handles worst relative to their own baseline. */
+  weakest_issue: AgentIssueStat | null;
+}
+
+export interface RepeatContact {
+  customer_id: string;
+  customer_name: string;
+  cluster_id: number;
+  issue_label: string;
+  call_count: number;
+  unresolved_count: number;
+  first_call_at: string;
+  last_call_at: string;
+  span_days: number;
+  calls: CallSummary[];
 }
 
 export interface TrendingIssue {

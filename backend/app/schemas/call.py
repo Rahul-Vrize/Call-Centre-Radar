@@ -82,6 +82,18 @@ class Customer(BaseModel):
     last_contact: str | None
 
 
+class AgentIssueStat(BaseModel):
+    """How one agent performs on one issue type."""
+    cluster_id: int
+    label: str
+    call_count: int
+    resolution_rate: float
+    #: Percentage points versus this agent's OWN overall rate. Comparing an
+    #: agent against themselves isolates "this issue is hard for them" from
+    #: "this agent is weaker overall".
+    delta_vs_self: float
+
+
 class AgentStats(BaseModel):
     id: str
     name: str
@@ -89,6 +101,28 @@ class AgentStats(BaseModel):
     avg_handle_time_seconds: float
     resolution_rate: float
     avg_attention_score: float
+    #: The issue this agent handles worst relative to their own baseline —
+    #: the coaching signal. None when no issue has enough calls to judge.
+    weakest_issue: AgentIssueStat | None = None
+
+
+class RepeatContact(BaseModel):
+    """One customer calling repeatedly about the same issue.
+
+    The brief's own example — "the complaint that came up nine times this week".
+    Keyed on issue cluster, not just customer: every customer in this corpus is
+    a repeat caller, so only same-issue repetition carries information.
+    """
+    customer_id: str
+    customer_name: str
+    cluster_id: int
+    issue_label: str
+    call_count: int
+    unresolved_count: int
+    first_call_at: str
+    last_call_at: str
+    span_days: float
+    calls: list[CallSummary]
 
 
 class TrendingIssue(BaseModel):

@@ -22,6 +22,7 @@ speaking rate within the same call, never against a global baseline. Absolute
 rate says more about a person than their mood; a change relative to how they
 started the call is the signal.
 """
+import re
 import statistics
 from dataclasses import dataclass
 
@@ -108,6 +109,7 @@ class ProsodyFeatures:
     words_per_second: float
     pause_ratio: float          # fraction of the turn spent in pauses
     rate_ratio: float           # vs this customer's own median in this call
+    measurable: bool = True     # False when the turn is too short to score
 
 
 @dataclass
@@ -198,7 +200,26 @@ def extract_prosody(turn: Turn, median_rate: float) -> ProsodyFeatures:
         words_per_second=wps,
         pause_ratio=min(pause_total / duration, 1.0),
         rate_ratio=wps / median_rate if median_rate > 0 else 1.0,
+        measurable=(n_words >= MIN_WORDS_FOR_PROSODY
+                    and duration >= MIN_SECONDS_FOR_PROSODY),
     )
+
+
+#: Below this many words, speaking rate is not measurable.
+#:
+#: A one-word turn ("Oh," / "Okay,") lasting a fraction of a second computes to
+#: 5+ words/sec against a ~2.5 median, so rate_ratio hits 2.0 and the valence
+#: clamps to -1.0 — a polite acknowledgement scored as maximum distress. That
+#: was 10% of all prosody scores on this corpus, and those turns dominated the
+#: fused series because the clamp is the largest value it can take.
+#:
+#: Short turns now get neutral prosody: their text score still counts, but we
+#: don't invent a delivery signal from two syllables.
+MIN_WORDS_FOR_PROSODY = 4
+
+#: Likewise, rate over a very short window is dominated by boundary error in
+#: the ASR timestamps rather than by how fast someone is talking.
+MIN_SECONDS_FOR_PROSODY = 1.2
 
 
 def prosody_valence(features: ProsodyFeatures) -> float:
@@ -208,6 +229,8 @@ def prosody_valence(features: ProsodyFeatures) -> float:
     unusually long pauses read as hesitation or frustration. Both push
     negative. Clamped so a single odd turn can't dominate the series.
     """
+    if not features.measurable:
+        return 0.0
     rate_effect = -(features.rate_ratio - 1.0)      # faster than baseline -> negative
     pause_effect = -features.pause_ratio
     return max(-1.0, min(1.0, 0.6 * rate_effect + 0.4 * pause_effect))
@@ -228,11 +251,14 @@ def score_customer_turns(turns: list[Turn]) -> list[MoodPoint]:
     if not customer:
         return []
 
+    # Baseline from turns long enough to be measurable — otherwise the median
+    # is dragged upward by the same one-word turns we're excluding.
     rates = []
     for _, t in customer:
         duration = max(t.end - t.start, 1e-6)
         n_words = len(t.words) or len(t.text.split())
-        rates.append(n_words / duration)
+        if n_words >= MIN_WORDS_FOR_PROSODY and duration >= MIN_SECONDS_FOR_PROSODY:
+            rates.append(n_words / duration)
     median_rate = statistics.median(rates) if rates else 0.0
 
     points: list[MoodPoint] = []
@@ -254,6 +280,56 @@ def score_customer_turns(turns: list[Turn]) -> list[MoodPoint]:
             )
         )
     return points
+
+
+#: Turns that carry no mood signal, however they score.
+#:
+#: Two categories, both measured as false positives on this corpus:
+#:
+#: * **Closing pleasantries.** VADER scores "Thank you." at +0.53 — the single
+#:   largest text signal in a polite banking call. Left in, the biggest
+#:   "mood movement" in most calls is the customer saying goodbye, and 37% of
+#:   detected shifts landed in the last two turns.
+#: * **Filler and dictated data.** "Um,", "Main Street,", "The zip code is
+#:   70021." — a customer reading out an address is not an emotional turning
+#:   point, but against a series that is otherwise all zeros it reads as one.
+#:
+#: These stay in the displayed mood timeline; they are only excluded from the
+#: series that change-point detection runs on.
+_PLEASANTRY = re.compile(
+    r"^(no,? )?(thank(s| you)?|thanks so much|thank you (so |very )?much|you too|you as well"
+    r"|bye|bye-bye|goodbye|have a (good|great|nice) (day|one)|no problem"
+    r"|okay|ok|alright|all right|sure|yeah|yes|no|nope|nah|um+|uh+|mm+|hmm+"
+    r"|that'?s (it|all|great|perfect)|nothing else|that'?ll be (it|all))"
+    r"[\s.,!]*$",
+    re.IGNORECASE,
+)
+
+#: A dictated value — address, zip, amount, account number — rather than an
+#: opinion. Mostly digits, or a bare noun phrase with no verb.
+_DICTATION = re.compile(r"^[^a-zA-Z]*\d[\d\s.,$#-]*$")
+
+
+def is_substantive(turn: Turn) -> bool:
+    """Could this turn plausibly evidence a change in how the customer feels?
+
+    Used to decide which points change-point detection sees. Filtering here
+    rather than lowering a threshold keeps the reason explicit: we are not
+    saying the shift was small, we are saying the turn cannot carry one.
+    """
+    text = turn.text.strip()
+    if not text:
+        return False
+    if _PLEASANTRY.match(text) or _DICTATION.match(text):
+        return False
+    return len(text.split()) >= MIN_WORDS_FOR_PROSODY
+
+
+def substantive_points(
+    points: list["MoodPoint"], turns: list[Turn]
+) -> list["MoodPoint"]:
+    """The subset of the mood series that change-point detection should run on."""
+    return [p for p in points if is_substantive(turns[p.turn_index])]
 
 
 def escalation_hits(turns: list[Turn]) -> list[tuple[int, str]]:

@@ -114,6 +114,38 @@ flowchart LR
 | **Frontend** | Next.js 16 (App Router) + Tailwind v4 | Rewrites `/api/*` and `/audio/*` to FastAPI — no CORS, and audio Range requests stay same-origin |
 | **Eval** | `jiwer` + the verifier's own pass rate | Numbers a judge can't wave away |
 
+### Voice-based emotion — tested and rejected
+
+`emotion2vec+` is the current state of the art for speech emotion recognition
+and is used in production call-centre tooling, so it was worth trying rather
+than dismissing. The argument for it here was specific: this corpus is *acted*,
+so delivery might carry affect the transcript doesn't.
+
+Run over the 20 calls our text scoring rated most negative, it returned:
+
+| | |
+|---|---|
+| neutral | 13 |
+| sad | 3 |
+| fearful | 2 |
+| happy | 1 |
+| disgusted | 1 |
+
+Five labels, but no signal. Text and voice agreed nowhere: the most negative
+call in the corpus (-0.57) came back **fearful**, another at -0.39 came back
+**happy**, and a savings-balance enquiry came back **disgusted** — with
+`fearful` at confidence 1.00, which is characteristic of a model outside its
+training distribution rather than one that is sure.
+
+The cause is bandwidth. emotion2vec trains on 16 kHz; this is 8 kHz telephony at
+48 kbps. The spectral detail emotional cues live in was discarded by the phone
+system before we ever saw the file, and upsampling for the ASR does not restore
+it.
+
+Rejected on the grounds that five confident-but-unverifiable affect labels on
+the dashboard is exactly the trade this system exists to avoid. Mood is scored
+from text and timing, both of which can be evidenced.
+
 ### Explicitly rejected
 
 - **Diarization** (any provider) — adds error to a solved problem and costs extra.
