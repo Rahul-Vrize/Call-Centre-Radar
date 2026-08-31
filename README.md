@@ -98,6 +98,133 @@ Expect roughly **80 minutes** for step 1 and **15 minutes** for step 2.
 
 ---
 
+## How it works
+
+Seven stages. The first three turn audio into text; the rest turn text into
+judgments that can be checked.
+
+### 1. Split the channels — this *is* the diarization
+
+The recordings are stereo with the agent on the left and the customer on the
+right, so `ffmpeg` splits them into two mono files and attribution is finished.
+No diarization model, no speaker-clustering step, and therefore no diarization
+error: who spoke is a property of the file, not a prediction.
+
+```
+[0:a]channelsplit=channel_layout=stereo[left][right]   ->  agent.wav, customer.wav
+```
+
+### 2. Transcribe each channel separately
+
+AssemblyAI with `multichannel=True` — *not* `speaker_labels`, which would ask
+it to re-derive a fact we already have. `faster-whisper` is the offline
+fallback and needs no key.
+
+Every response is cached to `data/cache/{call_id}.{provider}.json` before
+anything else touches it. Transcription is the only expensive, irreversible
+step, so it happens exactly once; every later change re-runs against the cache.
+
+### 3. Reconstruct turns from word timestamps
+
+ASR segments are not conversational turns — a whole side of a call can arrive
+as one blob. Turns are rebuilt from word-level timings: a silence longer than
+**0.8s** inside one speaker's audio ends their turn, then both sides are
+interleaved by start time. The same constant splits and re-joins, so the two
+operations are exact inverses.
+
+### 4. Mood, per customer turn
+
+VADER lexicon sentiment (deterministic, no model download, and you can point at
+the word that moved a score) fused **0.7 / 0.3** with prosody derived from the
+word timestamps — speaking rate and pause structure. Turns under 5 words are
+left unscored rather than guessed at.
+
+Change points in that series are found with `ruptures` PELT. A detected change
+is only *reported* as a mood shift if the customer ends up genuinely negative,
+not merely lower than they started — see "Known characteristics" below for why
+that filter carries most of the weight on this corpus.
+
+### 5. Grounded reasoning — the model never writes a quote
+
+One call to the LLM per call, under an enforced JSON schema, for intent,
+resolution and the summary. **The schema has no `quote` field.** It cannot: it
+only accepts a `turn_id`.
+
+```jsonc
+"intent": {
+  "label":   "string",   // what the customer wanted
+  "turn_id": "integer"   // which turn shows it — a NUMBER, never text
+}
+```
+
+The words are then looked up from our own transcript by that id. A fabricated
+quote is not caught after the fact — it is unrepresentable, because there is no
+field the model could put one in.
+
+### 6. Verify every citation, twice
+
+Two questions, and most systems only ask the first:
+
+| Check | Question | How |
+|---|---|---|
+| **Span** | Does this quote occur in the cited turn? | `rapidfuzz`, ≥85/100, minimum 5 words |
+| **Support** | Does it *justify the claim being made*? | `bge-small` embeddings via `fastembed`, ≥0.42 |
+
+A real quote that does not support its claim is the failure the brief scores
+**negative**, and a single green tick hides it. Both scores are stored, and the
+dashboard's `why?` toggle shows the working.
+
+Both thresholds were **calibrated, not guessed**: on labelled pairs, unrelated
+quotes scored 0.259–0.400 and supporting ones 0.434–0.808, so the cut is 0.42.
+The lexical fallback was originally guessed at 0.62 — above most of the
+supporting range — and was silently rejecting genuine citations until it was
+measured and moved to 0.45.
+
+Two claim types get the span check only: `mood_shift` and `attention_factor`
+point at turns chosen by *our own arithmetic*, so their citation means "these
+are the words at the moment the number came from", which is true by
+construction. Entailment-checking a number against the turn it was derived from
+is circular — it scored 0/11 before this exception existed.
+
+### 7. Score, cluster, and rank
+
+The needs-attention score is **computed, not asked for**. The model narrates
+what went wrong; `attention_score.py` owns the arithmetic, from weights that
+are published in the file and shown in the UI:
+
+| Factor | Max |
+|---|---:|
+| Issue unresolved | 0.30 |
+| Sustained negative mood | 0.20 |
+| Explicit escalation language | 0.20 |
+| Mood turned negative mid-call | 0.15 |
+| Repeat contact, same issue | 0.10 |
+| Unusually long call | 0.05 |
+
+Asking a model for a number gives you a different number on Tuesday, and "the
+model said 82" cannot be audited or tuned. Because the weights are additive,
+the UI can also show what the score would be *without* each factor — which is
+the question a manager actually has.
+
+Issues are discovered, not predefined: intent + summary embedded with
+`bge-small`, clustered with `sklearn`'s HDBSCAN, and named from **c-TF-IDF** —
+the terms frequent inside a cluster and rare outside it. The terms are stored
+alongside the readable name, so "no taxonomy was supplied" stays verifiable
+rather than asserted.
+
+### Where the human fits
+
+Triage is an append-only log, not a status flag. Marking a call reviewed takes
+it out of the queues; reopening appends a reversal rather than deleting the
+closure, so the record of who closed what, when and why survives being undone.
+
+It never writes to `resolution_status` — that is the model's judgment and the
+input to every resolution rate on the dashboard. If a manager's click reached
+it, those numbers would quietly stop describing the call centre and start
+describing who clicked what.
+
+---
+
 ## Reasoning providers
 
 Any provider works as long as it enforces a **JSON schema** — that enforcement
