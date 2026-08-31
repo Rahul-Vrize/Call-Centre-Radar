@@ -111,8 +111,9 @@ export default function ReviewPanel({
         )}
       </div>
 
+      {/* Current state, when there is one to show. */}
       {state.is_reviewed ? (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-1.5">
           <p className="flex items-center gap-2 text-sm">
             <Check size={15} className="shrink-0 text-[var(--good)]" />
             <span>
@@ -128,46 +129,64 @@ export default function ReviewPanel({
               {state.note}
             </p>
           )}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => submit("reopened")}
-            className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-[var(--hairline)] px-3 py-1.5 text-sm transition-colors hover:border-[var(--ink-3)] disabled:opacity-50"
-          >
-            <RotateCcw size={13} />
-            {busy ? "Reopening…" : "Reopen"}
-          </button>
-          <p className="text-[11px] text-[var(--ink-3)]">
-            Reopening adds an entry — it does not erase this one.
-          </p>
         </div>
       ) : (
-        <div className="mt-3 space-y-2">
-          <p className="text-sm text-[var(--ink-2)]">
-            {state.history.length > 0
-              ? "Reopened — back in the queue."
-              : "Not yet triaged. Marking it reviewed removes it from the queue."}
-          </p>
-          <label className="block">
-            <span className="sr-only">Your name</span>
-            <input
-              ref={reviewerRef}
-              defaultValue=""
-              placeholder="Your name"
-              maxLength={80}
-              className="w-full rounded-md border border-[var(--hairline)] bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-[var(--ink-3)] focus:border-[var(--bar)]"
-            />
-          </label>
-          <label className="block">
-            <span className="sr-only">What you did</span>
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="What you did (optional)"
-              maxLength={500}
-              className="w-full rounded-md border border-[var(--hairline)] bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-[var(--ink-3)] focus:border-[var(--bar)]"
-            />
-          </label>
+        <p className="mt-3 text-sm text-[var(--ink-2)]">
+          {state.history.length > 0
+            ? "Reopened — back in the queue."
+            : "Not yet triaged. Marking it reviewed removes it from the queue."}
+        </p>
+      )}
+
+      {/* The form sits OUTSIDE that branch on purpose. Reopening is an
+          attributed act too — it is the reviewer of record for the reversal —
+          so the name field has to be reachable in both states. Rendering it
+          only in the un-reviewed branch left "Reopen" asking for a name with
+          no box to type it in. */}
+      <div className="mt-3 space-y-2">
+        <label className="block">
+          <span className="sr-only">Your name</span>
+          <input
+            ref={reviewerRef}
+            defaultValue=""
+            placeholder="Your name"
+            maxLength={80}
+            className="w-full rounded-md border border-[var(--hairline)] bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-[var(--ink-3)] focus:border-[var(--bar)]"
+          />
+        </label>
+        <label className="block">
+          <span className="sr-only">
+            {state.is_reviewed ? "Why you're reopening" : "What you did"}
+          </span>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={
+              state.is_reviewed
+                ? "Why you're reopening (optional)"
+                : "What you did (optional)"
+            }
+            maxLength={500}
+            className="w-full rounded-md border border-[var(--hairline)] bg-transparent px-3 py-1.5 text-sm outline-none placeholder:text-[var(--ink-3)] focus:border-[var(--bar)]"
+          />
+        </label>
+
+        {state.is_reviewed ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => submit("reopened")}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--hairline)] px-3 py-1.5 text-sm transition-colors hover:border-[var(--ink-3)] disabled:opacity-50"
+            >
+              <RotateCcw size={13} />
+              {busy ? "Reopening…" : "Reopen"}
+            </button>
+            <p className="text-[11px] text-[var(--ink-3)]">
+              Reopening adds an entry — it does not erase this one.
+            </p>
+          </>
+        ) : (
           <button
             type="button"
             disabled={busy}
@@ -177,8 +196,8 @@ export default function ReviewPanel({
             <Check size={14} />
             {busy ? "Saving…" : "Mark reviewed"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {error && (
         <p className="mt-2 text-[11px] text-[var(--critical)]">{error}</p>
