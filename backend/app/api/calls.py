@@ -18,7 +18,8 @@ router = APIRouter()
 def _evidence_by_type(conn, call_id: str) -> dict[str, list[Evidence]]:
     rows = conn.execute(
         """
-        SELECT claim_type, turn_id, timestamp, quote, verified
+        SELECT claim_type, turn_id, timestamp, quote, verified,
+               match_score, support_score
         FROM evidence WHERE call_id = ? ORDER BY id
         """,
         (call_id,),
@@ -32,6 +33,8 @@ def _evidence_by_type(conn, call_id: str) -> dict[str, list[Evidence]]:
                 timestamp=r["timestamp"],
                 quote=r["quote"],
                 verified=bool(r["verified"]),
+                match_score=r["match_score"] or 0.0,
+                support_score=r["support_score"] or 0.0,
             )
         )
     return grouped

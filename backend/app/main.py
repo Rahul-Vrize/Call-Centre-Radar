@@ -6,7 +6,9 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api import agents, attention, calls, customers, ingest, repeats, trends
+from app.api import (
+    agents, attention, calls, customers, ingest, overview, repeats, trends,
+)
 from app.config import settings
 from app.db.session import init_db
 
@@ -27,6 +29,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(overview.router, prefix="/overview", tags=["overview"])
 app.include_router(customers.router, prefix="/customers", tags=["customers"])
 app.include_router(calls.router, prefix="/calls", tags=["calls"])
 app.include_router(attention.router, prefix="/attention", tags=["attention"])

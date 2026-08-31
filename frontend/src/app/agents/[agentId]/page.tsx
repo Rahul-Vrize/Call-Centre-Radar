@@ -21,13 +21,13 @@ export default async function AgentDetail({
       <div>
         <Link
           href="/agents"
-          className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+          className="text-sm text-[var(--bar)] hover:underline"
         >
           ← All agents
         </Link>
         <h1 className="mt-1 text-2xl font-semibold">{agent?.name ?? agentId}</h1>
         {agent && (
-          <p className="mt-1 font-mono text-sm text-neutral-500">
+          <p className="mt-1 font-mono text-sm text-[var(--ink-3)]">
             {agent.call_count} calls ·{" "}
             {(agent.resolution_rate * 100).toFixed(1)}% resolved overall ·
             attention {agent.avg_attention_score.toFixed(1)}
@@ -39,7 +39,7 @@ export default async function AgentDetail({
 
       {issues && issues.length > 0 && agent && (
         <>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-[var(--ink-3)]">
             Each bar is this agent&apos;s resolution rate on one issue, against
             their own {(agent.resolution_rate * 100).toFixed(0)}% overall
             baseline (the dashed line).
@@ -55,8 +55,8 @@ export default async function AgentDetail({
                   className={cn(
                     "rounded-lg border p-4",
                     weak
-                      ? "border-red-500/40 bg-red-500/5"
-                      : "border-neutral-200 dark:border-neutral-800",
+                      ? "border-[var(--critical)]/40 bg-[var(--critical)]/5"
+                      : "border-[var(--hairline)] ",
                   )}
                 >
                   <div className="flex items-baseline justify-between gap-4">
@@ -72,8 +72,8 @@ export default async function AgentDetail({
                         className={cn(
                           "ml-2 text-xs",
                           weak
-                            ? "text-red-600 dark:text-red-400"
-                            : "text-neutral-400",
+                            ? "text-[var(--critical)] "
+                            : "text-[var(--ink-3)]",
                         )}
                       >
                         {gap >= 0 ? "+" : ""}
@@ -84,22 +84,22 @@ export default async function AgentDetail({
 
                   {/* Bar with the agent's own baseline marked, so the gap is
                       visible without doing arithmetic. */}
-                  <div className="relative mt-3 h-2 w-full rounded-full bg-neutral-200 dark:bg-neutral-800">
+                  <div className="relative mt-3 h-2 w-full rounded-full bg-[var(--rail)]">
                     <div
                       style={{ width: `${issue.resolution_rate * 100}%` }}
                       className={cn(
                         "h-full rounded-full",
-                        weak ? "bg-red-500" : "bg-indigo-500",
+                        weak ? "bg-[var(--critical)]" : "bg-[var(--bar)]",
                       )}
                     />
                     <div
                       style={{ left: `${agent.resolution_rate * 100}%` }}
                       title={`this agent's overall rate: ${(agent.resolution_rate * 100).toFixed(0)}%`}
-                      className="absolute -top-1 h-4 border-l-2 border-dashed border-neutral-500"
+                      className="absolute -top-1 h-4 border-l-2 border-dashed border-[var(--ink-3)]"
                     />
                   </div>
 
-                  <p className="mt-2 font-mono text-xs text-neutral-400">
+                  <p className="mt-2 font-mono text-xs text-[var(--ink-3)]">
                     {issue.call_count} calls
                   </p>
                 </li>
@@ -110,7 +110,7 @@ export default async function AgentDetail({
       )}
 
       {issues && issues.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-[var(--ink-3)]">
           No issue has at least 8 calls for this agent — not enough data to
           judge per-issue performance.
         </p>

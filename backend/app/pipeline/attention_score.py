@@ -51,16 +51,6 @@ MOOD_CLAIM_FLOOR = -0.20
 HANDLE_TIME_OUTLIER_RATIO = 2.0
 
 
-def _ordinal(n: int) -> str:
-    """2 -> '2nd'. Used so a factor reads "3rd call about this issue" rather
-    than a generic label a manager has to decode."""
-    if 10 <= n % 100 <= 20:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return f"{n}{suffix}"
-
-
 @dataclass
 class AttentionFactor:
     factor: str
@@ -192,14 +182,11 @@ def compute_attention_score(
         severity = min(repeat_count / 3.0, 1.0)
         contribution = WEIGHTS["repeat_contact"] * severity
         total += contribution
-        ordinal = _ordinal(repeat_count + 1)
         factors.append(
             AttentionFactor(
-<<<<<<< HEAD
                 factor=(
-                    f"repeat contact — {repeat_count} earlier call(s) about this same issue"
-                    if repeat_count
-                    else "repeat contact about the same issue"
+                    f"repeat contact — {repeat_count} earlier call(s) "
+                    "about this same issue"
                 ),
                 weight=round(contribution, 3),
                 # Cites this call's own intent turn: the customer stating the
@@ -211,12 +198,7 @@ def compute_attention_score(
                 # misleads is worse than one that is merely absent.
                 turn_index=intent_turn_index,
                 check_support=False,
-                detail=f"{repeat_count} prior call(s) on this issue" if repeat_count else "",
-=======
-                factor=f"{ordinal} call about this issue",
-                weight=round(contribution, 3),
                 detail=f"{repeat_count} earlier call(s) in the same issue cluster",
->>>>>>> 8a8a291c25b82b4c97eff962844786f4a87dc6f4
             )
         )
 

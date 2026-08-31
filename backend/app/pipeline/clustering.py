@@ -16,6 +16,7 @@ request per cluster and renames things between runs.
 Also backs repeat-contact detection: same customer + same cluster + within N
 days, which feeds the attention score.
 """
+import logging
 import math
 import re
 from collections import Counter
@@ -39,15 +40,15 @@ MERGE_SIMILARITY = 0.90
 
 #: Words too generic to name a banking-support cluster.
 STOPWORDS = {
-    "the", "a", "an", "and", "or", "but", "to", "of", "in", "on", "for", "with",
-    "customer", "agent", "call", "caller", "bank", "account", "wants", "wanted",
-    "asked", "asks", "issue", "about", "their", "they", "them", "his", "her",
-    "was", "were", "is", "are", "be", "been", "has", "had", "have", "it", "that",
-    "this", "not", "no", "you", "your", "we", "i", "he", "she", "at", "by",
-    "intent", "outcome", "entered", "request", "requested", "confirmed",
-    "customer's", "status", "completed", "provided", "gathered", "gave",
-    "call", "agent", "ended", "promised", "gave",
-    "from", "as", "s", "t", "provided", "requested", "resolved", "unresolved",
+    "a", "about", "account", "agent", "an", "and", "are", "as", "asked",
+    "asks", "at", "bank", "be", "been", "but", "by", "call", "caller",
+    "completed", "confirmed", "customer", "customer's", "ended", "entered",
+    "for", "from", "gathered", "gave", "had", "has", "have", "he", "her",
+    "his", "i", "in", "intent", "is", "issue", "it", "no", "not", "of",
+    "on", "or", "outcome", "promised", "provided", "request", "requested",
+    "resolved", "s", "she", "status", "t", "that", "the", "their", "them",
+    "they", "this", "to", "unresolved", "wanted", "wants", "was", "we",
+    "were", "with", "you", "your"
 }
 
 
@@ -109,6 +110,48 @@ def name_clusters(texts: list[str], labels: list[int]) -> dict[int, str]:
         names[label] = " / ".join(top) if top else f"cluster {label}"
 
     return names
+
+
+def name_cluster_readable(terms: str, samples: list[str]) -> str:
+    """Turn c-TF-IDF terms into something a manager would say out loud.
+
+    The terms are the honest, deterministic output — they prove no taxonomy was
+    supplied, because they are literally the words that distinguish this group
+    from the rest of the corpus. But "gas / fossil / pay" is not a sentence a
+    support manager would ever utter, and "fossil" is half a utility company's
+    name that happened to be discriminative.
+
+    So: keep the terms as the evidence, and add a readable name beside them.
+    One LLM call per cluster — ten calls for the whole corpus — and it names
+    the group from examples rather than inventing a category first, so the
+    clustering is still what decided the grouping.
+
+    Falls back to the terms themselves if the model is unavailable: a slightly
+    ugly name is better than a missing one.
+    """
+    from app.pipeline import reasoning
+
+    prompt = (
+        "Name this group of customer support calls in 2-4 plain words a support "
+        "manager would use. No jargon, no punctuation, no quotes.\n\n"
+        f"Distinguishing terms: {terms}\n\nExample calls:\n"
+        + "\n".join(f"- {s[:130]}" for s in samples[:6])
+        + "\n\nReply with the name only."
+    )
+    try:
+        # 300, not 30. The name itself is three words, but reasoning models
+        # (gpt-oss on Bedrock among them) spend the budget thinking BEFORE
+        # emitting an answer — at 24 tokens the reasoning consumed all of it
+        # and the text block came back empty, so every cluster silently fell
+        # back to its raw terms.
+        name = reasoning.complete_text(prompt, max_tokens=300).strip()
+    except Exception:
+        return terms
+
+    name = name.strip().strip('".').replace("\n", " ")
+    if not name or len(name) > 42:
+        return terms
+    return name[0].upper() + name[1:]
 
 
 def _merge_similar(matrix, labels: list[int], threshold: float) -> list[int]:

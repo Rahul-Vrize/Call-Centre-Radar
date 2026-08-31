@@ -39,11 +39,11 @@ function Metric({
 
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wide text-neutral-500">{label}</p>
+      <p className="text-[11px] uppercase tracking-wide text-[var(--ink-3)]">{label}</p>
       <p
         className={cn(
           "font-mono text-lg tabular-nums",
-          worse ? "text-red-600 dark:text-red-400" : "text-neutral-800 dark:text-neutral-200",
+          worse ? "text-[var(--critical)] " : "text-[var(--ink-1)] ",
         )}
       >
         {value}
@@ -66,17 +66,17 @@ function DayStrip({ issue }: { issue: TrendingIssue }) {
         const share = issue.share_by_day[day];
         return (
           <div key={day} className="flex flex-1 flex-col items-center gap-1">
-            <span className="font-mono text-[10px] tabular-nums text-neutral-400">
+            <span className="font-mono text-[10px] tabular-nums text-[var(--ink-3)]">
               {(share * 100).toFixed(0)}%
             </span>
             <div className="flex h-8 w-full items-end">
               <div
                 title={`${day}: ${issue.counts_by_day[day] ?? 0} calls (${(share * 100).toFixed(0)}% of that day)`}
                 style={{ height: `${Math.max((share / peak) * 100, 6)}%` }}
-                className="w-full rounded-sm bg-indigo-500/70"
+                className="w-full rounded-sm bg-[var(--bar)]/70"
               />
             </div>
-            <span className="font-mono text-[10px] text-neutral-400">{day.slice(5)}</span>
+            <span className="font-mono text-[10px] text-[var(--ink-3)]">{day.slice(5)}</span>
           </div>
         );
       })}
@@ -105,8 +105,8 @@ function IssueCard({
       className={cn(
         "rounded-lg border p-4 transition",
         underperforming
-          ? "border-red-500/50 bg-red-500/5"
-          : "border-neutral-200 dark:border-neutral-800",
+          ? "border-[var(--critical)]/50 bg-[var(--critical)]/5"
+          : "border-[var(--hairline)] ",
       )}
     >
       <div className="flex items-start justify-between gap-4">
@@ -118,7 +118,7 @@ function IssueCard({
             {issue.label}
           </Link>
           {underperforming && (
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--critical)]">
               <AlertTriangle size={12} />
               resolves {Math.abs(resolutionGap * 100).toFixed(0)}pp below the{" "}
               {(baseline.resolution_rate * 100).toFixed(0)}% average
@@ -127,17 +127,17 @@ function IssueCard({
         </div>
         <Link
           href={`/trends/${issue.cluster_id}`}
-          className="shrink-0 font-mono text-sm tabular-nums text-indigo-600 hover:underline dark:text-indigo-400"
+          className="shrink-0 font-mono text-sm tabular-nums text-[var(--bar)] hover:underline"
         >
           {issue.call_count} calls →
         </Link>
       </div>
 
       {/* Volume bar: the primary ranking signal. */}
-      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--rail)]">
         <div
           style={{ width: `${(issue.call_count / maxCalls) * 100}%` }}
-          className={cn("h-full rounded-full", underperforming ? "bg-red-500" : "bg-indigo-500")}
+          className={cn("h-full rounded-full", underperforming ? "bg-[var(--critical)]" : "bg-[var(--bar)]")}
         />
       </div>
 
@@ -155,7 +155,7 @@ function IssueCard({
         />
         <Metric label="avg handle" value={formatSeconds(issue.avg_handle_time_seconds)} />
         <div className="col-span-2 sm:col-span-1">
-          <p className="text-[11px] uppercase tracking-wide text-neutral-500">
+          <p className="text-[11px] uppercase tracking-wide text-[var(--ink-3)]">
             share of day
           </p>
           <div className="mt-1">
@@ -183,7 +183,7 @@ function ExceptionCallout({
 
   if (flagged.length === 0) {
     return (
-      <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+      <div className="rounded-lg border border-[var(--good)]/40 bg-[var(--good)]/5 px-4 py-3 text-sm text-[var(--good)]">
         No issue resolves meaningfully below the{" "}
         {(baseline.resolution_rate * 100).toFixed(0)}% average.
       </div>
@@ -191,8 +191,8 @@ function ExceptionCallout({
   }
 
   return (
-    <div className="rounded-lg border border-red-500/40 bg-red-500/5 p-4">
-      <p className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400">
+    <div className="rounded-lg border border-[var(--critical)]/40 bg-[var(--critical)]/5 p-4">
+      <p className="flex items-center gap-2 text-sm font-medium text-[var(--critical)]">
         <AlertTriangle size={15} />
         {flagged.length} issue{flagged.length > 1 ? "s" : ""} resolving below
         average
@@ -202,11 +202,11 @@ function ExceptionCallout({
           <li key={issue.cluster_id} className="text-sm">
             <Link
               href={`/trends/${issue.cluster_id}`}
-              className="font-medium text-red-700 hover:underline dark:text-red-400"
+              className="font-medium text-[var(--critical)] hover:underline"
             >
               {issue.label}
             </Link>
-            <span className="ml-2 font-mono text-xs tabular-nums text-neutral-500">
+            <span className="ml-2 font-mono text-xs tabular-nums text-[var(--ink-3)]">
               {(issue.resolution_rate * 100).toFixed(0)}% vs{" "}
               {(baseline.resolution_rate * 100).toFixed(0)}% · attention{" "}
               {issue.avg_attention_score.toFixed(1)} vs{" "}
@@ -230,7 +230,7 @@ export default async function TrendsDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Trending issues</h1>
-        <p className="mt-1 max-w-3xl text-sm text-neutral-500">
+        <p className="mt-1 max-w-3xl text-sm text-[var(--ink-3)]">
           Clusters discovered from the call summaries themselves — no predefined
           taxonomy. Ranked by volume, with the outcome metrics that actually
           separate them. Issues resolving below average are flagged.
@@ -240,7 +240,7 @@ export default async function TrendsDashboard() {
       {error && <ApiNotice error={error} />}
 
       {data && data.issues.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-[var(--ink-3)]">
           No clusters yet — run the analysis pipeline.
         </p>
       )}
@@ -249,8 +249,8 @@ export default async function TrendsDashboard() {
         <>
           <ExceptionCallout issues={data.issues} baseline={data.baseline} />
 
-          <div className="flex flex-wrap gap-6 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-            <span className="text-xs uppercase tracking-wide text-neutral-500">
+          <div className="flex flex-wrap gap-6 rounded-lg border border-[var(--hairline)] bg-[var(--rail)] px-4 py-3 text-sm">
+            <span className="text-xs uppercase tracking-wide text-[var(--ink-3)]">
               Baseline, all calls
             </span>
             <span className="font-mono tabular-nums">
@@ -278,7 +278,7 @@ export default async function TrendsDashboard() {
             ))}
           </ul>
 
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-[var(--ink-3)]">
             The corpus covers four non-contiguous days, so raw per-day counts
             track the recording schedule rather than any trend. The day strip
             shows each issue&apos;s <em>share</em> of that day&apos;s calls, which is

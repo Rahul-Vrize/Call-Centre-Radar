@@ -9,6 +9,17 @@ interface Props {
   audioUrl: string;
 }
 
+/** Wavesurfer paints to a canvas, so it cannot take a CSS variable — it needs a
+ *  resolved colour. Reading the token off the document keeps the waveform on the
+ *  same palette as everything around it (and in the right theme) instead of the
+ *  hardcoded slate/indigo/rose that made this card the one element on the page
+ *  wearing colours from nowhere. */
+function token(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return v.trim() || fallback;
+}
+
 export default function WaveformPlayer({ audioUrl }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { register, setCurrentTime } = usePlayer();
@@ -34,9 +45,9 @@ export default function WaveformPlayer({ audioUrl }: Props) {
       ws = WaveSurfer.create({
         container: containerRef.current,
         height: 72,
-        waveColor: "#94a3b8",
-        progressColor: "#6366f1",
-        cursorColor: "#e11d48",
+        waveColor: token("--ink-3", "#898781"),
+        progressColor: token("--bar", "#2a78d6"),
+        cursorColor: token("--critical", "#d03b3b"),
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
@@ -57,7 +68,7 @@ export default function WaveformPlayer({ audioUrl }: Props) {
         setTime(t);
         setCurrentTime(t);
       });
-      ws.on("error", (e: Error) => setError(e?.message ?? "audio failed to load"));
+      ws.on("error", (e: Error) => setError(e?.message ?? " audio failed to load"));
     })();
 
     return () => {
@@ -70,30 +81,29 @@ export default function WaveformPlayer({ audioUrl }: Props) {
 
   if (!audioUrl) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+      <div className="rounded-lg border border-dashed border-[var(--hairline)] p-6 text-sm text-[var(--ink-3)]">
         No recording linked to this call.
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+    <div className="min-w-0 rounded-lg border border-[var(--hairline)] p-4">
       <div className="flex items-center gap-4">
         <button
-          type="button"
-          onClick={() => wsRef.current?.playPause()}
-          aria-label={playing ? "Pause" : "Play"}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-500"
+          type="button" onClick={() => wsRef.current?.playPause()}
+          aria-label={playing ? "Pause" : " Play"}
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--bar)] text-white transition hover:brightness-110"
         >
           {playing ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
         </button>
         <div ref={containerRef} className="min-w-0 flex-1" />
-        <span className="shrink-0 font-mono text-xs tabular-nums text-neutral-500">
+        <span className="shrink-0 font-mono text-xs tabular-nums text-[var(--ink-3)]">
           {formatSeconds(time)} / {formatSeconds(duration)}
         </span>
       </div>
       {error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+        <p className="mt-2 text-xs text-[var(--critical)]">
           Audio error: {error}
         </p>
       )}

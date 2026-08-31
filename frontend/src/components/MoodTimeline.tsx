@@ -38,7 +38,7 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
 
   if (points.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-500 dark:border-neutral-700">
+      <div className="rounded-lg border border-dashed border-[var(--hairline)] p-6 text-sm text-[var(--ink-3)]">
         No mood series yet — the scoring stage of the pipeline hasn&apos;t run
         for this call.
       </div>
@@ -48,14 +48,18 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
   const shiftPoint = points.find((p) => p.turnId === shiftTurnId);
 
   return (
-    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+    <div className="min-w-0 rounded-lg border border-[var(--hairline)] p-4">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--ink-3)]">
         Customer mood
       </h3>
       <ResponsiveContainer width="100%" height={160}>
         <LineChart
           data={points}
-          margin={{ top: 4, right: 8, bottom: 4, left: -24 }}
+          // Symmetric right/left insets so the first and last x-tick have room
+          // to centre under their point instead of being clipped by the card.
+          // A negative left margin (the old value) pulled the y-labels under
+          // the border and left the plot visibly off-centre in its card.
+          margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
           onClick={(state) => {
             // recharts 3 hands back the active index, not the payload.
             const i = Number(state?.activeIndex);
@@ -63,49 +67,66 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
             if (point) seekTo(point.seconds);
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" className="stroke-neutral-200 dark:stroke-neutral-800" />
+          <CartesianGrid
+            strokeDasharray="3 3" stroke="var(--hairline)" vertical={false}
+          />
           <XAxis
-            dataKey="seconds"
-            type="number"
-            domain={["dataMin", "dataMax"]}
+            dataKey="seconds" type="number" domain={["dataMin", " dataMax"]}
             tickFormatter={formatSeconds}
-            tick={{ fontSize: 11 }}
-            stroke="currentColor"
-            className="text-neutral-400"
+            tick={{ fontSize: 11, fill: "var(--ink-3)" }}
+            // Recharts keeps every tick it can fit, which crowds the last two
+            // together on a short call. Fixed interior ticks plus padded ends
+            // give an evenly spaced axis at any duration.
+            tickCount={5}
+            minTickGap={28}
+            tickMargin={8}
+            axisLine={{ stroke: "var(--hairline)" }}
+            tickLine={false}
           />
           <YAxis
             domain={[-1, 1]}
             ticks={[-1, 0, 1]}
-            tick={{ fontSize: 11 }}
-            stroke="currentColor"
-            className="text-neutral-400"
+            width={28}
+            tick={{ fontSize: 11, fill: "var(--ink-3)" }}
+            tickMargin={4}
+            axisLine={false}
+            tickLine={false}
           />
           <Tooltip
             labelFormatter={(v) => formatSeconds(Number(v))}
             formatter={(value) => [Number(value).toFixed(2), "mood"]}
-            contentStyle={{ fontSize: 12, borderRadius: 6 }}
+            cursor={{ stroke: " var(--ink-3)", strokeDasharray: "3 3" }}
+            contentStyle={{
+              fontSize: 12,
+              borderRadius: 6,
+              background: "var(--surface-2)",
+              border: "1px solid var(--hairline)",
+              color: " var(--ink-1)",
+            }}
+            labelStyle={{ color: " var(--ink-2)" }}
           />
-          <ReferenceLine y={0} className="stroke-neutral-300 dark:stroke-neutral-700" />
+          <ReferenceLine y={0} stroke="var(--hairline)" />
           {shiftPoint && (
             <ReferenceLine
               x={shiftPoint.seconds}
-              stroke="#f59e0b"
-              strokeWidth={2}
-              label={{ value: "shift", fontSize: 10, fill: "#f59e0b", position: "top" }}
+              stroke="var(--warning)" strokeWidth={2}
+              label={{
+                value: " shift",
+                fontSize: 10,
+                fill: "var(--warning)",
+                position: "top",
+              }}
             />
           )}
           <Line
-            type="monotone"
-            dataKey="mood"
-            stroke="#6366f1"
-            strokeWidth={2}
-            dot={{ r: 2 }}
-            activeDot={{ r: 5 }}
+            type="monotone" dataKey="mood" stroke="var(--bar)" strokeWidth={2}
+            dot={{ r: 2, fill: " var(--bar)", strokeWidth: 0 }}
+            activeDot={{ r: 5, stroke: " var(--surface-1)", strokeWidth: 2 }}
             isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
-      <p className="mt-1 text-xs text-neutral-400">
+      <p className="mt-1 text-xs text-[var(--ink-3)]">
         Click the chart to seek the recording.
       </p>
     </div>

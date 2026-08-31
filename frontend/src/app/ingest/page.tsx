@@ -14,7 +14,7 @@ export default function IngestPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Analyse a new call</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-[var(--ink-3)]">
           Upload a recording the system has never seen. It runs the same
           pipeline as the other 1,441 calls — channel split, transcription, mood
           scoring, change-point detection, grounded reasoning, and citation
@@ -24,8 +24,8 @@ export default function IngestPage() {
 
       <IngestForm />
 
-      <div className="rounded-lg border border-neutral-200 p-4 text-sm text-neutral-500 dark:border-neutral-800">
-        <p className="font-medium text-neutral-700 dark:text-neutral-300">
+      <div className="rounded-lg border border-[var(--hairline)] p-4 text-sm text-[var(--ink-3)]">
+        <p className="font-medium text-[var(--ink-1)]">
           What happens to the recording
         </p>
         <p className="mt-1">

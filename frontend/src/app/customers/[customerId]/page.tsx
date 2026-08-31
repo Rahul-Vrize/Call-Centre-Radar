@@ -17,12 +17,12 @@ export default async function CustomerDetail({
       <div>
         <Link
           href="/customers"
-          className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+          className="text-sm text-[var(--bar)] hover:underline"
         >
           ← All customers
         </Link>
         <h1 className="mt-1 text-2xl font-semibold">{customerId}</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-[var(--ink-3)]">
           {calls ? `${calls.length} calls` : "Call history"}
         </p>
       </div>
@@ -35,7 +35,7 @@ export default async function CustomerDetail({
             <li key={call.id}>
               <Link
                 href={`/calls/${encodeURIComponent(call.id)}`}
-                className="flex items-start gap-4 rounded-lg border border-neutral-200 p-4 transition hover:border-indigo-400 dark:border-neutral-800"
+                className="flex items-start gap-4 rounded-lg border border-[var(--hairline)] p-4 transition hover:border-[var(--bar)]"
               >
                 <span
                   className={cn(
@@ -49,10 +49,10 @@ export default async function CustomerDetail({
                   <p className="font-medium">
                     {call.intent_label ?? "Intent not analysed"}
                   </p>
-                  <p className="mt-0.5 text-sm text-neutral-500">
+                  <p className="mt-0.5 text-sm text-[var(--ink-3)]">
                     {call.summary ?? "No summary stored."}
                   </p>
-                  <p className="mt-1 font-mono text-xs text-neutral-400">
+                  <p className="mt-1 font-mono text-xs text-[var(--ink-3)]">
                     {formatDateTime(call.started_at)} ·{" "}
                     {formatSeconds(call.duration_seconds)} ·{" "}
                     {call.resolution_status ?? "unknown"}

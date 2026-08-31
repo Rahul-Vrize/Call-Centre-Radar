@@ -173,9 +173,6 @@ def detect_reportable_shift(points, turns, stored):
 
 
 def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
-<<<<<<< HEAD
-    """How many earlier calls this customer made, on any subject."""
-=======
     """How many earlier calls this customer made about the SAME issue.
 
     The attention factor this feeds is labelled "repeat contact about the same
@@ -190,7 +187,6 @@ def prior_call_count(conn: sqlite3.Connection, call_id: str) -> int:
     week". Returns 0 when clustering hasn't run yet, so the factor simply
     doesn't fire rather than reverting to the inaccurate behaviour.
     """
->>>>>>> 8a8a291c25b82b4c97eff962844786f4a87dc6f4
     row = conn.execute(
         """
         SELECT COUNT(*) AS n

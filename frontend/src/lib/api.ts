@@ -1,5 +1,6 @@
 import type {
   AgentIssueStat,
+  Overview,
   AgentStats,
   RepeatContact,
   CallDetail,
@@ -63,6 +64,8 @@ export async function apiGet<T>(
     };
   }
 }
+
+export const getOverview = () => apiGet<Overview>("/overview");
 
 export const getCustomers = () => apiGet<Customer[]>("/customers");
 

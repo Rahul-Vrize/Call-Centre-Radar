@@ -159,14 +159,17 @@ claim type, with rejection reasons. Fully automatic, no labelling required.
 
 Measured on the full corpus:
 
-| | |
-|---|---|
-| Calls analysed | 1,441 |
-| Citations | 3,059 |
-| **Intent citations verified** | **97.9%** |
-| Mood-shift citations verified | 85.9% |
-| Resolution citations verified | 81.1% |
-| **Overall** | **89.3%** |
+| Claim type | Citations | Verified | |
+|---|---:|---:|---:|
+| Intent | 1,441 | 1,411 | **97.9%** |
+| Resolution | 1,441 | 1,169 | 81.1% |
+| Mood shift | 68 | 56 | 82.4% |
+| Attention factor | 11 | 10 | 90.9% |
+| **Overall** | **2,961** | **2,646** | **89.4%** |
+
+Across 1,441 calls. Resolution is the hardest claim type and that is expected:
+it is a judgment about what *didn't* happen — a payment never confirmed — and
+the turn where nothing was said is the turn hardest to cite.
 
 "Verified" means the quote provably occurs in the cited turn **and**
 semantically supports the claim. The harness re-checks from scratch rather than

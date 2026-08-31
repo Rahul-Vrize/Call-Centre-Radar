@@ -204,6 +204,80 @@ def analyze_call(turns: list[Turn]) -> ReasoningResult:
     return _coerce(payload, len(turns), model)
 
 
+def _require_text(text: str, stop_reason: str | None, max_tokens: int) -> str:
+    """Refuse to return an empty completion silently.
+
+    Reasoning models spend their token budget thinking BEFORE emitting an
+    answer, so an under-sized `max_tokens` yields a response whose only content
+    block is `reasoningContent` — no text at all. That returns "" from a
+    function whose caller has no way to distinguish "the model said nothing"
+    from "the model had nothing to say".
+
+    It has already caused one silent failure: every issue cluster fell back to
+    its raw c-TF-IDF terms because a 24-token budget was consumed by reasoning,
+    and nothing in the output said so. Raising an error here converts that into
+    a message that names the cause.
+    """
+    if text.strip():
+        return text
+    raise RuntimeError(
+        f"model returned no text (stopReason={stop_reason}, maxTokens={max_tokens}). "
+        "Reasoning models consume the budget before answering — raise max_tokens."
+    )
+
+
+def complete_text(prompt: str, max_tokens: int = 300) -> str:
+    """One short, unstructured completion from the configured provider.
+
+    Used only where the output is a human-facing *label*, never a judgment:
+    naming an issue cluster the algorithm already formed. Nothing here becomes
+    a claim, so it needs no citation and no schema — which is why this bypasses
+    the structured path rather than weakening it.
+    """
+    provider = settings.llm_provider
+    messages = [{"role": "user", "content": prompt}]
+
+    if provider == "bedrock":
+        response = _bedrock_client().converse(
+            modelId=settings.bedrock_model,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": max_tokens, "temperature": 0},
+        )
+        blocks = response["output"]["message"]["content"]
+        text = next((b["text"] for b in blocks if "text" in b), "")
+        return _require_text(text, response.get("stopReason"), max_tokens)
+
+    if provider == "azure":
+        import httpx
+
+        endpoint = settings.azure_openai_endpoint.rstrip("/")
+        r = httpx.post(
+            f"{endpoint}/openai/deployments/{settings.azure_openai_deployment}"
+            f"/chat/completions?api-version={settings.azure_openai_api_version}",
+            headers={"api-key": settings.azure_openai_api_key},
+            json={"messages": messages, "temperature": 0, "max_tokens": max_tokens},
+            timeout=60,
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+
+    if provider == "groq":
+        from groq import Groq
+
+        c = Groq(api_key=settings.groq_api_key, max_retries=5)
+        return c.chat.completions.create(
+            model=settings.groq_model, messages=messages,
+            temperature=0, max_tokens=max_tokens,
+        ).choices[0].message.content or ""
+
+    from ollama import Client
+
+    return Client(host=settings.ollama_host).chat(
+        model=settings.ollama_model, messages=messages,
+        options={"temperature": 0, "num_predict": max_tokens},
+    )["message"]["content"]
+
+
 _BEDROCK_CLIENT = None
 _BEDROCK_LOCK = threading.Lock()
 

@@ -80,6 +80,11 @@ CREATE INDEX IF NOT EXISTS idx_evidence_call ON evidence(call_id, claim_type);
 CREATE TABLE IF NOT EXISTS issue_clusters (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     label      TEXT NOT NULL,
+    -- The c-TF-IDF terms that actually distinguish this cluster. Kept
+    -- beside the readable name as the evidence that no taxonomy was
+    -- supplied: these are literally the words that separate this group
+    -- from the rest of the corpus.
+    terms                  TEXT,
     created_at TEXT NOT NULL
 );
 

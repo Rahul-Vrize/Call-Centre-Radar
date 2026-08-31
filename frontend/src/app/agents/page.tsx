@@ -22,8 +22,8 @@ function CoachingCallout({ agents }: { agents: AgentStats[] }) {
 
   if (flagged.length === 0) {
     return (
-      <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4 text-sm">
-        <p className="font-medium text-emerald-700 dark:text-emerald-400">
+      <div className="rounded-lg border border-[var(--good)]/40 bg-[var(--good)]/5 p-4 text-sm">
+        <p className="font-medium text-[var(--good)]">
           No agent underperforms their own baseline on any issue
         </p>
       </div>
@@ -31,8 +31,8 @@ function CoachingCallout({ agents }: { agents: AgentStats[] }) {
   }
 
   return (
-    <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-      <p className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+    <div className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning)]/5 p-4">
+      <p className="flex items-center gap-2 font-medium text-[var(--warning)]">
         <GraduationCap size={16} />
         {flagged.length} agent{flagged.length > 1 ? "s" : ""} with a coachable
         issue gap
@@ -44,13 +44,13 @@ function CoachingCallout({ agents }: { agents: AgentStats[] }) {
             <li key={a.id}>
               <Link
                 href={`/agents/${encodeURIComponent(a.id)}`}
-                className="font-medium text-amber-700 hover:underline dark:text-amber-400"
+                className="font-medium text-[var(--warning)] hover:underline"
               >
                 {a.name}
               </Link>{" "}
-              <span className="font-mono text-xs text-neutral-500">
+              <span className="font-mono text-xs text-[var(--ink-3)]">
                 resolves {(a.resolution_rate * 100).toFixed(0)}% overall but only{" "}
-                <span className="text-red-600 dark:text-red-400">
+                <span className="text-[var(--critical)]">
                   {(w.resolution_rate * 100).toFixed(0)}%
                 </span>{" "}
                 on {w.label} ({(w.delta_vs_self * 100).toFixed(0)}pp ·{" "}
@@ -71,7 +71,7 @@ export default async function AgentsDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Agents</h1>
-        <p className="mt-1 max-w-3xl text-sm text-neutral-500">
+        <p className="mt-1 max-w-3xl text-sm text-[var(--ink-3)]">
           Volume, handle time and outcomes — plus the issue each agent handles
           worst relative to their own baseline, which is where the coachable
           differences actually show up.
@@ -84,9 +84,9 @@ export default async function AgentsDashboard() {
         <>
           <CoachingCallout agents={agents} />
 
-          <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <div className="overflow-x-auto rounded-lg border border-[var(--hairline)]">
             <table className="w-full text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
+              <thead className="border-b border-[var(--hairline)] bg-[var(--rail)] text-left text-xs uppercase tracking-wide text-[var(--ink-3)]">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Agent</th>
                   <th className="px-4 py-2.5 font-medium">Calls</th>
@@ -100,12 +100,12 @@ export default async function AgentsDashboard() {
                 {agents.map((a) => (
                   <tr
                     key={a.id}
-                    className="border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 dark:border-neutral-900 dark:hover:bg-neutral-900/50"
+                    className="border-b border-[var(--hairline)] last:border-b-0 hover:bg-[var(--rail)]"
                   >
                     <td className="px-4 py-2.5">
                       <Link
                         href={`/agents/${encodeURIComponent(a.id)}`}
-                        className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                        className="font-medium text-[var(--bar)] hover:underline"
                       >
                         {a.name}
                       </Link>
@@ -126,8 +126,8 @@ export default async function AgentsDashboard() {
                           className={cn(
                             "font-mono text-xs",
                             a.weakest_issue.delta_vs_self < -0.2
-                              ? "text-red-600 dark:text-red-400"
-                              : "text-amber-600 dark:text-amber-400",
+                              ? "text-[var(--critical)] "
+                              : "text-[var(--warning)] ",
                           )}
                         >
                           {a.weakest_issue.label} ·{" "}
@@ -135,7 +135,7 @@ export default async function AgentsDashboard() {
                           {(a.weakest_issue.delta_vs_self * 100).toFixed(0)}pp)
                         </span>
                       ) : (
-                        <span className="text-xs text-neutral-400">
+                        <span className="text-xs text-[var(--ink-3)]">
                           consistent across issues
                         </span>
                       )}
@@ -146,7 +146,7 @@ export default async function AgentsDashboard() {
             </table>
           </div>
 
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-[var(--ink-3)]">
             &ldquo;Weakest issue&rdquo; compares an agent against their own
             overall resolution rate, not against other agents, and only counts
             issues with at least 8 calls. Aggregate rates span just 88-95% here,

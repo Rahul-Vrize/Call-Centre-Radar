@@ -207,12 +207,14 @@ No `quote` field exists in the schema. We resolve `turn_id` → verbatim text ou
 
 | Endpoint | Returns |
 |---|---|
+| `GET /overview` | **The control room.** KPIs, worst calls across all four days, failing issues, agent coaching gaps, repeat contacts, issue breakdown — one round trip, so the landing page never assembles itself from six requests that settle at different moments |
 | `GET /customers` | Every customer by name, call count, last contact |
 | `GET /customers/{id}/calls` | That customer's full call history |
 | `GET /calls/{id}` | Turns with speaker + timing, intent, mood timeline + shift, resolution, ≤40-word summary, attention score + factors — each with evidence |
 | `GET /attention?date=` | Ranked "needs a manager today", defaulting to 2020-06-02 |
 | `GET /trends` | Issue clusters with time-bucketed frequency |
-| `GET /agents` | Per-agent volume, handle time, resolution rate |
+| `GET /agents` | Per-agent volume, handle time, resolution rate, plus the issue each agent handles worst *relative to their own baseline* |
+| `GET /repeat-contacts` | Customers who called 3+ times about the same issue cluster |
 | `POST /ingest` | Full pipeline on a new recording — the live-demo path |
 
 SQLite, precomputed at ingestion, read-only at request time. Add a dedicated `evidence` table (`call_id, claim_type, turn_id, quote, match_score, verified`) so the eval harness's citation pass-rate is one SQL query rather than JSON spelunking. Index `calls(started_at)`, `calls(attention_score)`, `calls(customer_id)`. An FTS5 virtual table over turn text costs ~10 lines and buys full-text search across all 1,441 calls — a strong demo moment for free.

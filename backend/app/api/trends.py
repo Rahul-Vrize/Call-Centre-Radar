@@ -48,7 +48,7 @@ def trending_issues(conn: DbConn, limit: int = 25):
 
     clusters = conn.execute(
         """
-        SELECT ic.id AS cluster_id, ic.label,
+        SELECT ic.id AS cluster_id, ic.label, ic.terms,
                COUNT(*) AS call_count,
                COALESCE(AVG(CASE WHEN c.resolution_status = 'resolved' THEN 1.0
                                  WHEN c.resolution_status IS NULL THEN NULL
@@ -83,6 +83,7 @@ def trending_issues(conn: DbConn, limit: int = 25):
             TrendingIssue(
                 cluster_id=cluster["cluster_id"],
                 label=cluster["label"],
+                terms=cluster["terms"] or "",
                 call_count=cluster["call_count"],
                 counts_by_day=counts,
                 resolution_rate=cluster["res"],

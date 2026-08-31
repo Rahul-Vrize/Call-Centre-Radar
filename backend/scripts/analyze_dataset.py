@@ -58,10 +58,16 @@ def run_clustering(conn) -> None:
         conn.execute("DELETE FROM issue_clusters")
 
         db_ids: dict[int, int] = {}
-        for label, name in result.names.items():
+        for label, terms in result.names.items():
+            # Readable name for the UI; terms kept as the provenance.
+            samples = [
+                row["text"] for row, lab in zip(rows, result.labels) if lab == label
+            ][:6]
+            readable = clustering.name_cluster_readable(terms, samples)
             cursor = conn.execute(
-                "INSERT INTO issue_clusters (label, created_at) VALUES (?, datetime('now'))",
-                (name,),
+                "INSERT INTO issue_clusters (label, terms, created_at) "
+                "VALUES (?, ?, datetime('now'))",
+                (readable, terms),
             )
             db_ids[label] = cursor.lastrowid
 
@@ -76,9 +82,11 @@ def run_clustering(conn) -> None:
     if result.noise_ratio > 0.3:
         print("  note: >30% noise — consider FASTopic, which handles short texts "
               "better than HDBSCAN over embeddings")
-    for label, name in sorted(result.names.items())[:12]:
-        n = sum(1 for x in result.labels if x == label)
-        print(f"    {n:4d}  {name}")
+    for row in conn.execute(
+        "SELECT ic.label, ic.terms, COUNT(*) n FROM issue_clusters ic "
+        "JOIN call_clusters cc ON cc.cluster_id = ic.id GROUP BY ic.id ORDER BY n DESC"
+    ):
+        print(f"    {row['n']:4d}  {row['label']:<28} ({row['terms']})")
 
 
 def _rescore(conn) -> None:

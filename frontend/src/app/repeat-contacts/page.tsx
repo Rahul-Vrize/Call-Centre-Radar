@@ -18,7 +18,7 @@ export default async function RepeatContacts() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Repeat contacts</h1>
-        <p className="mt-1 max-w-3xl text-sm text-neutral-500">
+        <p className="mt-1 max-w-3xl text-sm text-[var(--ink-3)]">
           Customers who called more than twice about the <em>same</em> issue.
           Matched on issue cluster rather than customer alone — every customer
           here is a repeat caller, so only same-issue repetition means anything.
@@ -28,7 +28,7 @@ export default async function RepeatContacts() {
       {error && <ApiNotice error={error} />}
 
       {repeats && repeats.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-[var(--ink-3)]">
           No customer called three or more times about one issue.
         </p>
       )}
@@ -41,32 +41,32 @@ export default async function RepeatContacts() {
               className={cn(
                 "rounded-lg border p-4",
                 r.unresolved_count > 0
-                  ? "border-red-500/40 bg-red-500/5"
-                  : "border-neutral-200 dark:border-neutral-800",
+                  ? "border-[var(--critical)]/40 bg-[var(--critical)]/5"
+                  : "border-[var(--hairline)] ",
               )}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <p className="font-medium">
-                  <PhoneCall size={14} className="mr-1.5 inline text-neutral-400" />
+                  <PhoneCall size={14} className="mr-1.5 inline text-[var(--ink-3)]" />
                   <Link
                     href={`/customers/${encodeURIComponent(r.customer_id)}`}
                     className="hover:underline"
                   >
                     {r.customer_name}
                   </Link>
-                  <span className="text-neutral-500"> — </span>
+                  <span className="text-[var(--ink-3)]"> — </span>
                   <Link
                     href={`/trends/${r.cluster_id}`}
-                    className="text-indigo-600 hover:underline dark:text-indigo-400"
+                    className="text-[var(--bar)] hover:underline"
                   >
                     {r.issue_label}
                   </Link>
                 </p>
                 <p className="font-mono text-sm tabular-nums">
                   <span className="text-lg font-semibold">{r.call_count}</span>
-                  <span className="text-neutral-500"> calls over {r.span_days}d</span>
+                  <span className="text-[var(--ink-3)]"> calls over {r.span_days}d</span>
                   {r.unresolved_count > 0 && (
-                    <span className="ml-2 text-red-600 dark:text-red-400">
+                    <span className="ml-2 text-[var(--critical)]">
                       {r.unresolved_count} unresolved
                     </span>
                   )}
@@ -78,7 +78,7 @@ export default async function RepeatContacts() {
               <ol className="mt-3 space-y-1.5">
                 {r.calls.map((c, i) => (
                   <li key={c.id} className="flex items-start gap-3 text-sm">
-                    <span className="w-5 shrink-0 pt-0.5 font-mono text-xs text-neutral-400">
+                    <span className="w-5 shrink-0 pt-0.5 font-mono text-xs text-[var(--ink-3)]">
                       {i + 1}.
                     </span>
                     <span
@@ -93,11 +93,11 @@ export default async function RepeatContacts() {
                       href={`/calls/${encodeURIComponent(c.id)}`}
                       className="min-w-0 flex-1 hover:underline"
                     >
-                      <span className="line-clamp-1 text-neutral-600 dark:text-neutral-300">
+                      <span className="line-clamp-1 text-[var(--ink-2)]">
                         {c.summary ?? c.intent_label ?? c.id}
                       </span>
                     </Link>
-                    <span className="shrink-0 font-mono text-xs text-neutral-400">
+                    <span className="shrink-0 font-mono text-xs text-[var(--ink-3)]">
                       {formatDate(c.started_at)} ·{" "}
                       {formatSeconds(c.duration_seconds)} ·{" "}
                       {c.resolution_status ?? "?"}

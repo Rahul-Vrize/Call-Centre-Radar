@@ -5,7 +5,7 @@
 // first thing on screen.
 import Link from "next/link";
 import { getClusterCalls, getTrends } from "@/lib/api";
-import { attentionTone, cn, formatDateTime, formatSeconds } from "@/lib/utils";
+import { attentionTone, cn, formatDateTime, formatSeconds, humanLabel } from "@/lib/utils";
 import ApiNotice from "@/components/ApiNotice";
 
 export default async function ClusterCalls({
@@ -26,8 +26,7 @@ export default async function ClusterCalls({
     <div className="space-y-6">
       <div>
         <Link
-          href="/trends"
-          className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+          href="/trends" className="text-sm text-[var(--bar)] hover:underline"
         >
           ← All issues
         </Link>
@@ -35,7 +34,7 @@ export default async function ClusterCalls({
           {issue?.label ?? `Cluster ${clusterId}`}
         </h1>
         {issue && (
-          <p className="mt-1 font-mono text-sm text-neutral-500">
+          <p className="mt-1 font-mono text-sm text-[var(--ink-3)]">
             {issue.call_count} calls ·{" "}
             {(issue.resolution_rate * 100).toFixed(0)}% resolved · attention{" "}
             {issue.avg_attention_score.toFixed(1)} ·{" "}
@@ -52,7 +51,7 @@ export default async function ClusterCalls({
             <li key={call.id}>
               <Link
                 href={`/calls/${encodeURIComponent(call.id)}`}
-                className="flex items-start gap-4 rounded-lg border border-neutral-200 p-4 transition hover:border-indigo-400 dark:border-neutral-800"
+                className="flex items-start gap-4 rounded-lg border border-[var(--hairline)] p-4 transition hover:border-[var(--bar)]"
               >
                 <span
                   className={cn(
@@ -64,12 +63,12 @@ export default async function ClusterCalls({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
-                    {call.intent_label ?? "Intent not analysed"}
+                    {humanLabel(call.intent_label)}
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-sm text-neutral-500">
-                    {call.summary ?? "No summary stored."}
+                  <p className="mt-0.5 line-clamp-2 text-sm text-[var(--ink-3)]">
+                    {call.summary ?? " No summary stored."}
                   </p>
-                  <p className="mt-1 font-mono text-xs text-neutral-400">
+                  <p className="mt-1 font-mono text-xs text-[var(--ink-3)]">
                     {formatDateTime(call.started_at)} ·{" "}
                     {formatSeconds(call.duration_seconds)} ·{" "}
                     {call.resolution_status ?? "unknown"}

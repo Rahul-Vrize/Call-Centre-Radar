@@ -83,7 +83,18 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 #: Defined here rather than at the call site so analyze.py and the eval harness
 #: cannot drift apart: a harness that scores citations by different rules than
 #: production reports a number the dashboard does not agree with.
-SPAN_ONLY_CLAIM_TYPES = frozenset({"mood_shift"})
+#: `attention_factor` belongs here for the same reason `mood_shift` does. Every
+#: attention-factor citation points at a turn chosen by our own code — the
+#: escalation lexicon hit, the minimum of the mood series, the detected change
+#: point, this call's intent turn. None is a claim the model made, so the
+#: citation means "these are the words at the moment the number came from",
+#: which is true by construction. Entailment-checking "sustained negative
+#: customer mood" against the quote it was derived FROM is circular, and it
+#: fails: the eval harness scored those 0/11 before this line existed.
+#:
+#: The harness still reports them as their own row, so span-only verification
+#: is visible rather than folded silently into the headline number.
+SPAN_ONLY_CLAIM_TYPES = frozenset({"mood_shift", "attention_factor"})
 
 
 def claim_for(claim_type: str, claim_text: str) -> str | None:

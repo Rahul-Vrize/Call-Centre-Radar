@@ -1,6 +1,28 @@
 # The Reasoning Layer — What We're Building and Why
 
-**Short answer: LangGraph — yes. LangChain — only one thin slice of it. Not both fully.**
+> ## Outcome: we took the fallback documented at the end of this file.
+>
+> **The shipped system uses neither LangGraph nor LangChain.** This document is
+> the design record that led to that decision, kept because the reasoning still
+> explains the code — not because it describes what was built.
+>
+> The "Fallback if time runs short" section below called it correctly: the
+> retry-and-degrade behaviour is the differentiator, the framework was only a
+> tidy home for it. That behaviour lives in
+> [`backend/app/pipeline/reasoning.py`](backend/app/pipeline/reasoning.py) as a
+> plain loop over four providers, and the citation guarantee it protects is
+> unchanged — the model returns a turn *number* under an enforced JSON schema,
+> and the words are looked up from our own transcript.
+>
+> What we gave up: the per-field retry and the diagram. What we kept: the
+> correctness guarantee, and one fewer dependency to explain.
+>
+> Read the rest as *why the problem is shaped this way*, and see
+> [RADAR_PLAYBOOK.md](RADAR_PLAYBOOK.md) for the architecture as built.
+
+---
+
+**Original short answer (superseded): LangGraph — yes. LangChain — only one thin slice of it. Not both fully.**
 
 This doc explains the problem in plain language first, then the decision, then
 the code. If you only read one section, read "The problem in one example."
