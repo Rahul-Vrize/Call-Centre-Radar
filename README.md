@@ -14,6 +14,37 @@ reasoning behind each choice.
 
 ---
 
+## Where each requirement lives
+
+| The brief asks for | Dashboard | API |
+|---|---|---|
+| Every customer by name, with full call history | `/customers` | `GET /customers`, `GET /customers/{id}/calls` |
+| Per call: the recording and our transcript | `/calls/{id}` | `GET /calls/{id}` |
+| Per call: intent, mood + where it shifted, resolution, ≤40-word summary | `/calls/{id}` | `GET /calls/{id}` |
+| Needs-attention today, ranked | `/attention` | `GET /attention?date=` |
+| Which issues are trending | `/trends` | `GET /trends` |
+| Per-agent volumes, handle times, outcomes | `/agents` | `GET /agents` |
+| A judgment cites the timestamp and the words | everywhere a claim appears | `evidence` on every judgment field |
+
+Two views go past the brief: `/` is a single-screen control room across all
+four days, and `/repeat-contacts` surfaces customers who called three or more
+times about the same issue — the brief's own example of "the complaint that
+came up nine times this week".
+
+Measured on the shipped database, so these are checkable rather than claimed:
+
+- **1,441/1,441** calls have an intent, a resolution and a mood series
+- **18,025** turns carry speaker and timings
+- Longest summary is **30 words** (the cap is 40); no call exceeds it
+- Needs-attention scores span **0–40**, inside the required 0–100
+- **2,961** citations at **89.4%** verified — see [Evaluation](#evaluation)
+
+Nothing is transcribed on request: the analysis is precomputed into
+`data/radar.db`, and `POST /ingest` is the one path that runs the pipeline live,
+for a recording the system has never seen.
+
+---
+
 ## Quickstart
 
 **The analysed database ships with this repo.** `data/radar.db` contains all
