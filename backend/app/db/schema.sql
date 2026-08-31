@@ -93,3 +93,35 @@ CREATE TABLE IF NOT EXISTS call_clusters (
     cluster_id INTEGER NOT NULL REFERENCES issue_clusters(id),
     PRIMARY KEY (call_id, cluster_id)
 );
+
+-- Manager triage, kept as an append-only LOG rather than a status column.
+--
+-- Two facts about a call are independent and must not share a field:
+--   * calls.resolution_status  — did the CALL solve the customer's problem?
+--                                the model's judgment, and the input to every
+--                                resolution rate, agent gap and failing-issue
+--                                number on the dashboard.
+--   * this table               — has a HUMAN dealt with it since?
+-- Collapsing them would mean one manager clicking "done" silently rewrites the
+-- corpus statistics. Keeping them apart also lets the common real outcome be
+-- expressed: the call failed AND someone fixed it afterwards.
+--
+-- Append-only because undo has to be honest. "Reopen" is a new row, not a
+-- deletion, so the history survives: who closed it, when, why, and whether it
+-- was closed and reopened three times. Current state is the latest row.
+-- That is the same discipline the citation design applies to the model —
+-- nothing is asserted without a record — turned on the humans.
+--
+-- There is no authentication in this system, so `reviewer` is a name someone
+-- typed, not an identity we verified. It is labelled that way in the UI; a
+-- fake permissions model would be worse than an honest free-text field.
+CREATE TABLE IF NOT EXISTS call_reviews (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_id    TEXT NOT NULL REFERENCES calls(id) ON DELETE CASCADE,
+    action     TEXT NOT NULL CHECK (action IN ('reviewed', 'reopened')),
+    reviewer   TEXT NOT NULL,
+    note       TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+-- (call_id, id DESC) is the "latest row per call" lookup that every read does.
+CREATE INDEX IF NOT EXISTS idx_call_reviews_call ON call_reviews(call_id, id DESC);

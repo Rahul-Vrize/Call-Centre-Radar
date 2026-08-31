@@ -51,6 +51,40 @@ class AttentionFactor(BaseModel):
     evidence: Evidence | None = None
 
 
+class ReviewEvent(BaseModel):
+    """One entry in a call's triage history. Never edited, never deleted."""
+    action: Literal["reviewed", "reopened"]
+    #: A name someone typed. There is no auth here, so this is a claim about
+    #: who acted, not a verified identity — the UI says so rather than
+    #: implying a permissions model that does not exist.
+    reviewer: str
+    note: str = ""
+    created_at: str
+
+
+class ReviewState(BaseModel):
+    """Current triage state, derived from the latest event in the log.
+
+    Deliberately separate from `resolution_status`: that is the model's
+    judgment about whether the CALL succeeded, and it feeds every resolution
+    rate on the dashboard. This is whether a HUMAN has dealt with the call
+    since. A manager's click must never rewrite the corpus statistics.
+    """
+    is_reviewed: bool = False
+    reviewed_by: str | None = None
+    reviewed_at: str | None = None
+    note: str = ""
+    #: Full log, newest first. Present so "undo" is inspectable: a reopened
+    #: call still shows who closed it and why.
+    history: list[ReviewEvent] = []
+
+
+class ReviewRequest(BaseModel):
+    action: Literal["reviewed", "reopened"]
+    reviewer: str
+    note: str = ""
+
+
 class CallDetail(BaseModel):
     id: str
     customer_id: str
@@ -78,6 +112,8 @@ class CallDetail(BaseModel):
     attention_score: int | None  # 0-100
     attention_factors: list[AttentionFactor] = []
 
+    review: ReviewState = ReviewState()
+
 
 class CallSummary(BaseModel):
     id: str
@@ -92,6 +128,9 @@ class CallSummary(BaseModel):
     #: judgments whose proof is a click away, and the brief's rule ("a claim
     #: with no evidence scores zero") is satisfied only on the detail page.
     intent_evidence: Evidence | None = None
+    #: Whether a human has already triaged this call. Lets a queue show
+    #: what is LEFT rather than everything that was ever flagged.
+    is_reviewed: bool = False
 
 
 class Customer(BaseModel):

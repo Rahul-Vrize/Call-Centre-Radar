@@ -7,10 +7,12 @@ import ApiNotice from "@/components/ApiNotice";
 export default async function AttentionDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; reviewed?: string }>;
 }) {
-  const { date } = await searchParams;
-  const { data, error } = await getAttention(date);
+  const { date, reviewed } = await searchParams;
+  const showReviewed = reviewed === "1";
+  const { data, error } = await getAttention(date, showReviewed);
+  const dateQs = date ? `date=${encodeURIComponent(date)}` : "";
 
   return (
     <div className="space-y-6">
@@ -37,7 +39,7 @@ export default async function AttentionDashboard({
             return (
               <Link
                 key={day.date}
-                href={`/attention?date=${day.date}`}
+                href={`/attention?date=${day.date}${showReviewed ? "&reviewed=1" : ""}`}
                 className={cn(
                   "rounded-md border px-3 py-1 font-mono text-xs tabular-nums transition",
                   active
@@ -53,9 +55,29 @@ export default async function AttentionDashboard({
         </div>
       )}
 
+      {data && (data.reviewed_count > 0 || showReviewed) && (
+        /* Shown even when the reviewed calls are hidden: a queue that shrinks
+           should read as work done, not as rows going missing. */
+        <p className="flex flex-wrap items-center gap-2 text-xs text-[var(--ink-3)]">
+          <span>
+            {data.reviewed_count} of this day&apos;s calls already reviewed
+          </span>
+          <Link
+            href={`/attention?${[dateQs, showReviewed ? "" : "reviewed=1"]
+              .filter(Boolean)
+              .join("&")}`}
+            className="rounded border border-[var(--hairline)] px-2 py-0.5 transition-colors hover:border-[var(--bar)] hover:text-[var(--ink-1)]"
+          >
+            {showReviewed ? "hide reviewed" : "show reviewed"}
+          </Link>
+        </p>
+      )}
+
       {data && data.calls.length === 0 && (
         <p className="text-sm text-[var(--ink-3)]">
-          No calls{data.date ? ` for ${data.date}` : ""}.
+          {data.reviewed_count > 0
+            ? `Queue clear — all ${data.reviewed_count} flagged calls for ${data.date} have been reviewed.`
+            : `No calls${data.date ? ` for ${data.date}` : ""}.`}
         </p>
       )}
 
@@ -65,7 +87,12 @@ export default async function AttentionDashboard({
             <li key={call.id}>
               <Link
                 href={`/calls/${encodeURIComponent(call.id)}`}
-                className="flex items-start gap-4 rounded-lg border border-[var(--hairline)] p-4 transition hover:border-[var(--bar)]"
+                className={cn(
+                  "flex items-start gap-4 rounded-lg border p-4 transition hover:border-[var(--bar)]",
+                  call.is_reviewed
+                    ? "border-[var(--good)]/40 bg-[var(--good)]/5"
+                    : "border-[var(--hairline)]",
+                )}
               >
                 <span
                   className={cn(
@@ -76,8 +103,13 @@ export default async function AttentionDashboard({
                   {call.attention_score ?? "—"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium">
+                  <p className="flex items-baseline gap-2 font-medium">
                     {humanLabel(call.intent_label)}
+                    {call.is_reviewed && (
+                      <span className="rounded border border-[var(--good)]/50 px-1.5 py-0.5 font-mono text-[10px] uppercase text-[var(--good)]">
+                        reviewed
+                      </span>
+                    )}
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-[var(--ink-3)]">
                     {call.summary ?? "No summary stored."}

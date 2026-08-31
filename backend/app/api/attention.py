@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from app.api.reviews import REVIEWED_CALL_IDS
 from app.db.session import DbConn
 from app.schemas.call import CallSummary
 
@@ -19,6 +20,10 @@ class AttentionResponse(BaseModel):
     #: Every day the corpus actually covers, so the UI can offer them.
     available_dates: list[AttentionDay]
     calls: list[CallSummary]
+    #: How many of this day's calls a human has already triaged. Shown even
+    #: when they are hidden, so the queue emptying reads as work done rather
+    #: than as data going missing.
+    reviewed_count: int = 0
 
 
 def latest_call_date(conn) -> str | None:
@@ -34,7 +39,18 @@ def latest_call_date(conn) -> str | None:
 
 
 @router.get("", response_model=AttentionResponse)
-def needs_attention(conn: DbConn, date: str | None = None, limit: int = 100):
+def needs_attention(
+    conn: DbConn,
+    date: str | None = None,
+    limit: int = 100,
+    include_reviewed: bool = False,
+):
+    """Ranked calls for one day.
+
+    Reviewed calls drop out by default. A queue whose job is "what still needs
+    a manager" has to shrink as it is worked, or nobody can tell what is left;
+    `include_reviewed=true` brings them back for anyone auditing what was done.
+    """
     days = [
         AttentionDay(date=r["day"], call_count=r["n"])
         for r in conn.execute(
@@ -49,15 +65,25 @@ def needs_attention(conn: DbConn, date: str | None = None, limit: int = 100):
     if day is None:
         return AttentionResponse(date=None, available_dates=days, calls=[])
 
+    reviewed_count = conn.execute(
+        f"""
+        SELECT COUNT(*) FROM calls
+        WHERE DATE(started_at) = ? AND id IN ({REVIEWED_CALL_IDS})
+        """,
+        (day,),
+    ).fetchone()[0]
+
     rows = conn.execute(
-        """
-        SELECT id, started_at, duration_seconds, intent_label,
-               resolution_status, summary, attention_score
-        FROM calls
-        WHERE DATE(started_at) = ?
+        f"""
+        SELECT c.id, c.started_at, c.duration_seconds, c.intent_label,
+               c.resolution_status, c.summary, c.attention_score,
+               CASE WHEN c.id IN ({REVIEWED_CALL_IDS}) THEN 1 ELSE 0 END AS is_reviewed
+        FROM calls c
+        WHERE DATE(c.started_at) = ?
+          AND ({int(include_reviewed)} = 1 OR c.id NOT IN ({REVIEWED_CALL_IDS}))
         -- SQLite sorts NULL below any value, so DESC puts unscored calls last:
         -- analysed calls rank above ones that haven't been.
-        ORDER BY attention_score DESC, started_at DESC
+        ORDER BY c.attention_score DESC, c.started_at DESC
         LIMIT ?
         """,
         (day, limit),
@@ -66,5 +92,10 @@ def needs_attention(conn: DbConn, date: str | None = None, limit: int = 100):
     return AttentionResponse(
         date=day,
         available_dates=days,
-        calls=[CallSummary(**dict(r)) for r in rows],
+        reviewed_count=reviewed_count,
+        calls=[
+            CallSummary(**{k: r[k] for k in r.keys() if k != "is_reviewed"},
+                        is_reviewed=bool(r["is_reviewed"]))
+            for r in rows
+        ],
     )

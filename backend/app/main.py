@@ -7,7 +7,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (
-    agents, attention, calls, customers, ingest, overview, repeats, trends,
+    agents, attention, calls, customers, ingest, overview, repeats, reviews,
+    trends,
 )
 from app.config import settings
 from app.db.session import init_db
@@ -32,6 +33,9 @@ app = FastAPI(
 app.include_router(overview.router, prefix="/overview", tags=["overview"])
 app.include_router(customers.router, prefix="/customers", tags=["customers"])
 app.include_router(calls.router, prefix="/calls", tags=["calls"])
+# Same prefix, separate module: triage is a different concern from reading a
+# call, and the paths (/calls/{id}/review) do not collide with GET /calls/{id}.
+app.include_router(reviews.router, prefix="/calls", tags=["reviews"])
 app.include_router(attention.router, prefix="/attention", tags=["attention"])
 app.include_router(trends.router, prefix="/trends", tags=["trends"])
 app.include_router(agents.router, prefix="/agents", tags=["agents"])

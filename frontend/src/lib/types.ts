@@ -36,6 +36,30 @@ export interface Turn {
   overlapping: boolean;
 }
 
+export interface ReviewEvent {
+  action: "reviewed" | "reopened";
+  /** A name someone typed. There is no auth here, so this is a claim about
+   *  who acted, not a verified identity. */
+  reviewer: string;
+  note: string;
+  created_at: string;
+}
+
+/** Current triage state, folded from an append-only log.
+ *
+ *  Deliberately separate from `resolution_status`: that is the model's
+ *  judgment about whether the CALL succeeded and feeds every rate on the
+ *  dashboard. This is whether a HUMAN has dealt with it since. */
+export interface ReviewState {
+  is_reviewed: boolean;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  note: string;
+  /** Newest first. Undo appends a "reopened" event rather than erasing, so a
+   *  reopened call still shows who closed it and why. */
+  history: ReviewEvent[];
+}
+
 export interface AttentionFactor {
   factor: string;
   weight: number;
@@ -68,6 +92,8 @@ export interface CallDetail {
 
   attention_score: number | null; // 0-100
   attention_factors: AttentionFactor[];
+
+  review: ReviewState;
 }
 
 export interface CallSummary {
@@ -80,6 +106,8 @@ export interface CallSummary {
   attention_score: number | null;
   /** The citation behind `intent_label`, so ranked lists can show evidence. */
   intent_evidence?: Evidence | null;
+  /** Whether a human has already triaged this call. */
+  is_reviewed?: boolean;
 }
 
 export interface Customer {
@@ -162,6 +190,9 @@ export interface AttentionResponse {
   date: string | null;
   available_dates: AttentionDay[];
   calls: CallSummary[];
+  /** Triaged calls for this day. Shown even when they are hidden, so an
+   *  emptying queue reads as work done, not as data going missing. */
+  reviewed_count: number;
 }
 
 
@@ -177,6 +208,7 @@ export interface OverviewKpis {
   unresolved: number;
   needs_attention: number;
   repeat_contact_issues: number;
+  reviewed: number;
 }
 
 export interface FailingIssue {

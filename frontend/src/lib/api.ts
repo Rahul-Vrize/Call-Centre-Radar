@@ -7,6 +7,7 @@ import type {
   CallSummary,
   Customer,
   AttentionResponse,
+  ReviewState,
   TrendsResponse,
 } from "./types";
 
@@ -26,10 +27,9 @@ export type ApiResult<T> =
   | { data: null; error: string };
 
 /**
- * Every endpoint in backend/app/api/ currently returns 501 — the pipeline that
- * fills the database isn't written yet. So this never throws: it reports the
- * failure and lets the page render an honest empty state instead of a crash.
- * Once the backend is real, the same call path just starts returning data.
+ * Never throws. A page whose data is missing should say so and still render;
+ * a dashboard that white-screens because one endpoint is down is harder to
+ * diagnose on stage than one showing an honest error band.
  */
 export async function apiGet<T>(
   path: string,
@@ -75,10 +75,13 @@ export const getCustomerCalls = (customerId: string) =>
 export const getCall = (callId: string) =>
   apiGet<CallDetail>(`/calls/${encodeURIComponent(callId)}`);
 
-export const getAttention = (date?: string) =>
-  apiGet<AttentionResponse>(
-    date ? `/attention?date=${encodeURIComponent(date)}` : "/attention",
-  );
+export const getAttention = (date?: string, includeReviewed = false) => {
+  const q = new URLSearchParams();
+  if (date) q.set("date", date);
+  if (includeReviewed) q.set("include_reviewed", "true");
+  const qs = q.toString();
+  return apiGet<AttentionResponse>(`/attention${qs ? `?${qs}` : ""}`);
+};
 
 export const getTrends = () => apiGet<TrendsResponse>("/trends");
 
@@ -98,3 +101,47 @@ export const getAgentCalls = (agentId: string, clusterId?: number) =>
 
 export const getRepeatContacts = () =>
   apiGet<RepeatContact[]>("/repeat-contacts");
+
+/**
+ * Append one triage event to a call's review log.
+ *
+ * Browser-only by design: this is the one write in the app, and it is always a
+ * user action, so it goes through the /api rewrite like any other client fetch.
+ * "Undo" is `action: "reopened"` — a new event, never a deletion, so the record
+ * of who closed the call and why survives being reversed.
+ */
+export async function postReview(
+  callId: string,
+  body: { action: "reviewed" | "reopened"; reviewer: string; note?: string },
+): Promise<ApiResult<ReviewState>> {
+  try {
+    const res = await fetch(
+      `${apiBase()}/calls/${encodeURIComponent(callId)}/review`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ note: "", ...body }),
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      // FastAPI puts the human-readable reason in `detail`; surfacing the raw
+      // JSON envelope instead would show the user a stack of braces.
+      let message = `${res.status} ${res.statusText}`;
+      try {
+        const parsed = JSON.parse(detail);
+        if (typeof parsed?.detail === "string") message = parsed.detail;
+      } catch {
+        if (detail) message = detail.slice(0, 200);
+      }
+      return { data: null, error: message };
+    }
+    return { data: (await res.json()) as ReviewState, error: null };
+  } catch (e) {
+    return {
+      data: null,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+}

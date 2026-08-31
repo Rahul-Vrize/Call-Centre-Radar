@@ -16,6 +16,7 @@ it never analyses.
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from app.api.reviews import REVIEWED_CALL_IDS
 from app.db.session import DbConn
 from app.schemas.call import CallSummary, Evidence
 
@@ -46,6 +47,10 @@ class Kpis(BaseModel):
     unresolved: int
     needs_attention: int
     repeat_contact_issues: int
+    #: Flagged calls a human has already triaged. The queue below hides
+    #: them, so this is what tells you the queue shrank because work was
+    #: done rather than because data went missing.
+    reviewed: int
 
 
 class FailingIssue(BaseModel):
@@ -146,6 +151,10 @@ def overview(conn: DbConn, queue_size: int = 8):
             "SELECT COUNT(*) FROM calls WHERE attention_score >= 30"
         ).fetchone()[0],
         repeat_contact_issues=repeats_n,
+        reviewed=conn.execute(
+            f"SELECT COUNT(*) FROM calls "
+            f"WHERE attention_score >= 30 AND id IN ({REVIEWED_CALL_IDS})"
+        ).fetchone()[0],
     )
 
     # --- the queue: worst calls anywhere in the corpus, not just one day ----
@@ -154,9 +163,11 @@ def overview(conn: DbConn, queue_size: int = 8):
     # A dashboard row that states an intent without showing the words behind it
     # is a claim the reader has to take on trust — which is the thing this
     # system exists not to ask for.
+    # Triaged calls drop out: this is a work queue, and one that never shrinks
+    # is a report. The `reviewed` KPI above accounts for what left.
     queue = []
     for r in conn.execute(
-        """
+        f"""
         SELECT c.id, c.started_at, c.duration_seconds, c.intent_label,
                c.resolution_status, c.summary, c.attention_score,
                e.turn_id, e.timestamp, e.quote, e.verified,
@@ -165,6 +176,7 @@ def overview(conn: DbConn, queue_size: int = 8):
         LEFT JOIN evidence e
                ON e.call_id = c.id AND e.claim_type = 'intent'
         WHERE c.analyzed_at IS NOT NULL
+          AND c.id NOT IN ({REVIEWED_CALL_IDS})
         ORDER BY c.attention_score DESC, c.started_at DESC LIMIT ?
         """,
         (queue_size,),

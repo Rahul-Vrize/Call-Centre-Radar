@@ -9,6 +9,7 @@ import json
 
 from fastapi import APIRouter, HTTPException
 
+from app.api.reviews import review_state
 from app.db.session import DbConn
 from app.schemas.call import AttentionFactor, CallDetail, Evidence, Turn, Word
 
@@ -118,4 +119,5 @@ def get_call(call_id: str, conn: DbConn):
         mood_shift_evidence=first("mood_shift"),
         attention_score=call["attention_score"],
         attention_factors=factors,
+        review=review_state(conn, call_id),
     )

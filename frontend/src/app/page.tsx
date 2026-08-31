@@ -161,8 +161,15 @@ export default async function ControlRoom() {
           tone="good"
         />
         <Kpi
-          value={k.needs_attention.toLocaleString()}
-          label="Need a manager" sub="score 30 or higher" tone="critical" href="/attention"
+          value={(k.needs_attention - k.reviewed).toLocaleString()}
+          label="Still to review"
+          sub={
+            k.reviewed > 0
+              ? `${k.reviewed.toLocaleString()} of ${k.needs_attention.toLocaleString()} done`
+              : `of ${k.needs_attention.toLocaleString()} flagged`
+          }
+          tone="critical"
+          href="/attention"
         />
         <Kpi
           value={k.unresolved.toLocaleString()}
@@ -183,7 +190,7 @@ export default async function ControlRoom() {
         <section>
           <div className="flex items-baseline justify-between">
             <h2 className="text-[12px] font-semibold uppercase tracking-[0.06em]">
-              Worst calls, all four days
+              Worst calls still to review
             </h2>
             <Link
               href="/attention" className="flex items-center gap-0.5 text-[11px] text-[var(--ink-3)] hover:text-[var(--ink-1)]"

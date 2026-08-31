@@ -8,6 +8,7 @@ import WaveformPlayer from "./WaveformPlayer";
 import TranscriptPanel from "./TranscriptPanel";
 import MoodTimeline from "./MoodTimeline";
 import AttentionBadge from "./AttentionBadge";
+import ReviewPanel from "./ReviewPanel";
 import EvidenceChip from "./EvidenceChip";
 
 const RESOLUTION_TONE: Record<string, string> = {
@@ -152,6 +153,8 @@ export default function CallView({ call }: { call: CallDetail }) {
               score={call.attention_score}
               factors={call.attention_factors}
             />
+
+            <ReviewPanel callId={call.id} initial={call.review} />
           </aside>
         </div>
       </div>
