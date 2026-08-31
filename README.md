@@ -103,6 +103,64 @@ Expect roughly **80 minutes** for step 1 and **15 minutes** for step 2.
 Seven stages. The first three turn audio into text; the rest turn text into
 judgments that can be checked.
 
+```mermaid
+flowchart LR
+    subgraph S1["1 · Audio → text  (expensive, cached, runs once)"]
+        direction TB
+        MP3["call.mp3<br/>stereo, 8 kHz"]
+        SPLIT["ffmpeg channelsplit<br/><b>left = agent · right = customer</b><br/>this is the whole of diarization"]
+        ASR["AssemblyAI multichannel<br/>faster-whisper offline fallback"]
+        CACHE[("data/cache/<br/>raw transcripts")]
+        TURNS["merge_into_turns<br/>split on 0.8s pauses"]
+        MP3 --> SPLIT --> ASR --> CACHE --> TURNS
+    end
+
+    TURNS --> DB[("SQLite<br/>turns")]
+
+    subgraph S2["2 · Text → judgments  (free, re-runnable)"]
+        direction TB
+        LLM["reasoning.py<br/>enforced JSON schema<br/><b>returns turn_id, never a quote</b>"]
+        LOOKUP["quote read back<br/>from our own turns"]
+        SPAN{"span<br/>rapidfuzz ≥ 85"}
+        SUPP{"support<br/>bge-small ≥ 0.42"}
+        EV[("evidence<br/>verified 0 or 1")]
+        LLM --> LOOKUP --> SPAN
+        SPAN -->|pass| SUPP
+        SPAN -->|fail| EV
+        SUPP -->|pass| EV
+        SUPP -->|fail| EV
+        MOOD["mood.py<br/>VADER 0.7 + prosody 0.3"]
+        CP["ruptures PELT<br/>change point"]
+        MOOD --> CP
+        CLUSTER["clustering.py<br/>bge → HDBSCAN → c-TF-IDF"]
+    end
+
+    DB --> LLM
+    DB --> MOOD
+    DB --> CLUSTER
+
+    CP --> SCORE["attention_score.py<br/>computed from published weights<br/>the model never supplies the number"]
+    EV --> SCORE
+
+    subgraph S3["3 · Serve"]
+        direction TB
+        API["FastAPI"]
+        UI["Next.js dashboard"]
+        REVIEW["manager review<br/>append-only log"]
+        API --> UI --> REVIEW
+    end
+
+    SCORE --> API
+    EV --> API
+    CLUSTER --> API
+    REVIEW -.->|"queues re-filter"| API
+
+    LIVE["POST /ingest<br/>a call nobody has seen"] -.->|"same pipeline · ~13s"| MP3
+```
+
+Transcription is the only expensive, irreversible step, so it is cached and
+happens once; everything to the right of `data/cache/` re-runs for free.
+
 ### 1. Split the channels — this *is* the diarization
 
 The recordings are stereo with the agent on the left and the customer on the
