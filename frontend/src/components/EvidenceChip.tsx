@@ -52,8 +52,8 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
           className={cn(
             "flex min-w-0 flex-1 items-center gap-1.5 rounded border px-2 py-1 text-left font-mono text-xs transition hover:brightness-110",
             verified
-              ? " border-[var(--good)]/50 bg-[var(--good)]/10 text-[var(--good)]"
-              : " border-[var(--critical)]/50 bg-[var(--critical)]/10 text-[var(--critical)]",
+              ? "border-[var(--good)]/50 bg-[var(--good)]/10 text-[var(--good)]"
+              : "border-[var(--critical)]/50 bg-[var(--critical)]/10 text-[var(--critical)]",
           )}
         >
           {verified ? (
@@ -72,7 +72,7 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
           aria-expanded={open}
           title="How was this verified?" className="shrink-0 rounded border border-[var(--hairline)] px-1.5 py-1 font-mono text-[10px] text-[var(--ink-3)] transition hover:border-[var(--ink-3)] hover:text-[var(--ink-1)]"
         >
-          {open ? "hide" : " why?"}
+          {open ? "hide" : "why?"}
         </button>
       </span>
 
@@ -91,7 +91,7 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
             <span
               className={cn(
                 "text-right tabular-nums",
-                match_score >= 85 ? " text-[var(--good)]" : " text-[var(--critical)]",
+                match_score >= 85 ? "text-[var(--good)]" : "text-[var(--critical)]",
               )}
             >
               {match_score.toFixed(0)}/100
@@ -105,8 +105,8 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
                 className={cn(
                   "text-right tabular-nums",
                   support_score >= 42
-                    ? " text-[var(--good)]"
-                    : " text-[var(--critical)]",
+                    ? "text-[var(--good)]"
+                    : "text-[var(--critical)]",
                 )}
               >
                 {support_score.toFixed(0)}/100
@@ -124,10 +124,10 @@ export default function EvidenceChip({ evidence }: { evidence: Evidence | null }
           <span
             className={cn(
               "mt-2 block font-semibold",
-              verified ? " text-[var(--good)]" : " text-[var(--critical)]",
+              verified ? "text-[var(--good)]" : "text-[var(--critical)]",
             )}
           >
-            {verified ? " VERIFIED" : " REJECTED"}
+            {verified ? "VERIFIED" : "REJECTED"}
             {!verified && reason ? ` — ${reason}` : ""}
           </span>
         </span>

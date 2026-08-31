@@ -6,13 +6,13 @@ import { Activity, Gauge, Headphones, PhoneCall, Radar, TrendingUp, Upload, User
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/", label: " Overview", icon: Gauge },
-  { href: "/attention", label: " Attention", icon: Activity },
-  { href: "/customers", label: " Customers", icon: Users },
-  { href: "/trends", label: " Trends", icon: TrendingUp },
-  { href: "/agents", label: " Agents", icon: Headphones },
-  { href: "/repeat-contacts", label: " Repeats", icon: PhoneCall },
-  { href: "/ingest", label: " Analyse a call", icon: Upload },
+  { href: "/", label: "Overview", icon: Gauge },
+  { href: "/attention", label: "Attention", icon: Activity },
+  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/trends", label: "Trends", icon: TrendingUp },
+  { href: "/agents", label: "Agents", icon: Headphones },
+  { href: "/repeat-contacts", label: "Repeats", icon: PhoneCall },
+  { href: "/ingest", label: "Analyse a call", icon: Upload },
 ] as const;
 
 export default function Nav() {
@@ -36,8 +36,8 @@ export default function Nav() {
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors",
                 active
-                  ? " bg-[var(--rail)] font-medium text-[var(--ink-1)]"
-                  : " text-[var(--ink-3)] hover:bg-[var(--rail)] hover:text-[var(--ink-1)]",
+                  ? "bg-[var(--rail)] font-medium text-[var(--ink-1)]"
+                  : "text-[var(--ink-3)] hover:bg-[var(--rail)] hover:text-[var(--ink-1)]",
               )}
             >
               <Icon size={15} />

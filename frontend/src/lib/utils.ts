@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Seconds -> "MM:SS" (or " H:MM:SS"past an hour). Matches the transcript's
+/** Seconds -> "MM:SS" (or "H:MM:SS"past an hour). Matches the transcript's
  *  evidence timestamps so a chip and a turn read the same way. */
 export function formatSeconds(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
@@ -25,8 +25,8 @@ export function parseTimestamp(timestamp: string): number {
 }
 
 const MONTHS = [
-  "Jan", " Feb", " Mar", " Apr", " May", " Jun",
-  " Jul", " Aug", " Sep", " Oct", " Nov", " Dec",
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ] as const;
 
 /** "2 Jun 2020, 01:04" — always UTC, always the same string.

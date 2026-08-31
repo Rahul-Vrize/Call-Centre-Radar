@@ -42,8 +42,8 @@ function Kpi({
       <p
         className={cn(
           "text-[26px] font-semibold leading-none tracking-tight",
-          tone === "critical" && " text-[var(--critical)]",
-          tone === "good" && " text-[var(--good)]",
+          tone === "critical" && "text-[var(--critical)]",
+          tone === "good" && "text-[var(--good)]",
         )}
       >
         {value}
@@ -224,7 +224,7 @@ export default async function ControlRoom() {
                             "shrink-0 font-mono tabular-nums",
                             call.intent_evidence.verified
                               ? "text-[var(--good)]"
-                              : " text-[var(--critical)]",
+                              : "text-[var(--critical)]",
                           )}
                         >
                           {call.intent_evidence.verified ? "✓" : "⚠"}{" "}

@@ -126,8 +126,8 @@ export default async function AgentsDashboard() {
                           className={cn(
                             "font-mono text-xs",
                             a.weakest_issue.delta_vs_self < -0.2
-                              ? "text-[var(--critical)] "
-                              : "text-[var(--warning)] ",
+                              ? "text-[var(--critical)]"
+                              : "text-[var(--warning)]",
                           )}
                         >
                           {a.weakest_issue.label} ·{" "}

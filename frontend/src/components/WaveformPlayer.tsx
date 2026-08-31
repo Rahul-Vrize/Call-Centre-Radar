@@ -68,7 +68,7 @@ export default function WaveformPlayer({ audioUrl }: Props) {
         setTime(t);
         setCurrentTime(t);
       });
-      ws.on("error", (e: Error) => setError(e?.message ?? " audio failed to load"));
+      ws.on("error", (e: Error) => setError(e?.message ?? "audio failed to load"));
     })();
 
     return () => {
@@ -92,7 +92,7 @@ export default function WaveformPlayer({ audioUrl }: Props) {
       <div className="flex items-center gap-4">
         <button
           type="button" onClick={() => wsRef.current?.playPause()}
-          aria-label={playing ? "Pause" : " Play"}
+          aria-label={playing ? "Pause" : "Play"}
           className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--bar)] text-white transition hover:brightness-110"
         >
           {playing ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}

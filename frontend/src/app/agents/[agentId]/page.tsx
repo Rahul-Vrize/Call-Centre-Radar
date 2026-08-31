@@ -56,7 +56,7 @@ export default async function AgentDetail({
                     "rounded-lg border p-4",
                     weak
                       ? "border-[var(--critical)]/40 bg-[var(--critical)]/5"
-                      : "border-[var(--hairline)] ",
+                      : "border-[var(--hairline)]",
                   )}
                 >
                   <div className="flex items-baseline justify-between gap-4">
@@ -72,7 +72,7 @@ export default async function AgentDetail({
                         className={cn(
                           "ml-2 text-xs",
                           weak
-                            ? "text-[var(--critical)] "
+                            ? "text-[var(--critical)]"
                             : "text-[var(--ink-3)]",
                         )}
                       >

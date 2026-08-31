@@ -71,7 +71,7 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
             strokeDasharray="3 3" stroke="var(--hairline)" vertical={false}
           />
           <XAxis
-            dataKey="seconds" type="number" domain={["dataMin", " dataMax"]}
+            dataKey="seconds" type="number" domain={["dataMin", "dataMax"]}
             tickFormatter={formatSeconds}
             tick={{ fontSize: 11, fill: "var(--ink-3)" }}
             // Recharts keeps every tick it can fit, which crowds the last two
@@ -95,15 +95,15 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
           <Tooltip
             labelFormatter={(v) => formatSeconds(Number(v))}
             formatter={(value) => [Number(value).toFixed(2), "mood"]}
-            cursor={{ stroke: " var(--ink-3)", strokeDasharray: "3 3" }}
+            cursor={{ stroke: "var(--ink-3)", strokeDasharray: "3 3" }}
             contentStyle={{
               fontSize: 12,
               borderRadius: 6,
               background: "var(--surface-2)",
               border: "1px solid var(--hairline)",
-              color: " var(--ink-1)",
+              color: "var(--ink-1)",
             }}
-            labelStyle={{ color: " var(--ink-2)" }}
+            labelStyle={{ color: "var(--ink-2)" }}
           />
           <ReferenceLine y={0} stroke="var(--hairline)" />
           {shiftPoint && (
@@ -111,7 +111,7 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
               x={shiftPoint.seconds}
               stroke="var(--warning)" strokeWidth={2}
               label={{
-                value: " shift",
+                value: "shift",
                 fontSize: 10,
                 fill: "var(--warning)",
                 position: "top",
@@ -120,8 +120,8 @@ export default function MoodTimeline({ turns, shiftTurnId }: Props) {
           )}
           <Line
             type="monotone" dataKey="mood" stroke="var(--bar)" strokeWidth={2}
-            dot={{ r: 2, fill: " var(--bar)", strokeWidth: 0 }}
-            activeDot={{ r: 5, stroke: " var(--surface-1)", strokeWidth: 2 }}
+            dot={{ r: 2, fill: "var(--bar)", strokeWidth: 0 }}
+            activeDot={{ r: 5, stroke: "var(--surface-1)", strokeWidth: 2 }}
             isAnimationActive={false}
           />
         </LineChart>

@@ -51,14 +51,14 @@ export interface CallDetail {
   started_at: string;
   duration_seconds: number;
   audio_url: string;
-  transcript_provider: "assemblyai" | " whisper";
+  transcript_provider: "assemblyai" | "whisper";
 
   turns: Turn[];
 
   intent_label: string | null;
   intent_evidence: Evidence | null;
 
-  resolution_status: "resolved" | " unresolved" | " partial" | null;
+  resolution_status: "resolved" | "unresolved" | "partial" | null;
   resolution_evidence: Evidence | null;
 
   summary: string | null; // <= 40 words

@@ -53,8 +53,8 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
               // Adding it only on the marked row would indent that row's text
               // by 2px, breaking the left edge every other row shares.
               "flex w-full gap-3 border-b border-l-2 border-[var(--hairline)] border-l-transparent px-4 py-2.5 text-left text-sm transition last:border-b-0",
-              isActive ? " bg-[var(--bar)]/10" : " hover:bg-[var(--rail)]",
-              isShift && " border-l-[var(--warning)]",
+              isActive ? "bg-[var(--bar)]/10" : "hover:bg-[var(--rail)]",
+              isShift && "border-l-[var(--warning)]",
             )}
           >
             <span className="w-11 shrink-0 pt-0.5 text-right font-mono text-xs tabular-nums text-[var(--ink-3)]">
@@ -64,8 +64,8 @@ export default function TranscriptPanel({ turns, shiftTurnId }: Props) {
               className={cn(
                 "w-[4.5rem] shrink-0 pt-0.5 text-xs font-medium uppercase tracking-wide",
                 turn.speaker === "customer"
-                  ? " text-[var(--ink-1)]"
-                  : " text-[var(--ink-3)]",
+                  ? "text-[var(--ink-1)]"
+                  : "text-[var(--ink-3)]",
               )}
             >
               {turn.speaker}

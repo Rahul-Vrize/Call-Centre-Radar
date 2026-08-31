@@ -42,7 +42,7 @@ export default async function RepeatContacts() {
                 "rounded-lg border p-4",
                 r.unresolved_count > 0
                   ? "border-[var(--critical)]/40 bg-[var(--critical)]/5"
-                  : "border-[var(--hairline)] ",
+                  : "border-[var(--hairline)]",
               )}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-3">

@@ -91,7 +91,7 @@ export default function IngestForm() {
           "flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 transition",
           dragging
             ? "border-[var(--bar)] bg-[var(--bar)]/5"
-            : "border-[var(--hairline)] hover:border-[var(--bar)] ",
+            : "border-[var(--hairline)] hover:border-[var(--bar)]",
         )}
       >
         <Upload size={22} className="text-[var(--ink-3)]" />

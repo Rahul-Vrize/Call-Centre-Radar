@@ -57,8 +57,8 @@ export default function IssueBars({
                 className={cn(
                   // 4px rounded data-end, anchored to the baseline at left
                   "h-2 rounded-r-[4px] transition-[filter]",
-                  issue.below_baseline ? "bg-[var(--critical)]" : " bg-[var(--bar)]",
-                  active && " brightness-110",
+                  issue.below_baseline ? "bg-[var(--critical)]" : "bg-[var(--bar)]",
+                  active && "brightness-110",
                 )}
               />
               {active && (
@@ -78,7 +78,7 @@ export default function IssueBars({
                   "flex w-16 items-center justify-end gap-1",
                   issue.below_baseline
                     ? "text-[var(--critical)]"
-                    : " text-[var(--ink-3)]",
+                    : "text-[var(--ink-3)]",
                 )}
               >
                 {issue.below_baseline && <AlertTriangle size={11} aria-hidden />}

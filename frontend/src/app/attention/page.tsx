@@ -37,12 +37,12 @@ export default async function AttentionDashboard({
             return (
               <Link
                 key={day.date}
-                href={`/?date=${day.date}`}
+                href={`/attention?date=${day.date}`}
                 className={cn(
                   "rounded-md border px-3 py-1 font-mono text-xs tabular-nums transition",
                   active
-                    ? " border-[var(--bar)] bg-[var(--bar)]/10 text-[var(--bar)] "
-                    : " border-[var(--hairline)] text-[var(--ink-3)] hover:border-[var(--bar)] ",
+                    ? "border-[var(--bar)] bg-[var(--bar)]/10 text-[var(--bar)]"
+                    : "border-[var(--hairline)] text-[var(--ink-3)] hover:border-[var(--bar)]",
                 )}
               >
                 {day.date}
@@ -80,7 +80,7 @@ export default async function AttentionDashboard({
                     {humanLabel(call.intent_label)}
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-[var(--ink-3)]">
-                    {call.summary ?? " No summary stored."}
+                    {call.summary ?? "No summary stored."}
                   </p>
                   <p className="mt-1 font-mono text-xs text-[var(--ink-3)]">
                     {formatDateTime(call.started_at)} ·{" "}

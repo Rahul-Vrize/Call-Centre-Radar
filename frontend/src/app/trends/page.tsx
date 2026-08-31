@@ -43,7 +43,7 @@ function Metric({
       <p
         className={cn(
           "font-mono text-lg tabular-nums",
-          worse ? "text-[var(--critical)] " : "text-[var(--ink-1)] ",
+          worse ? "text-[var(--critical)]" : "text-[var(--ink-1)]",
         )}
       >
         {value}
@@ -106,7 +106,7 @@ function IssueCard({
         "rounded-lg border p-4 transition",
         underperforming
           ? "border-[var(--critical)]/50 bg-[var(--critical)]/5"
-          : "border-[var(--hairline)] ",
+          : "border-[var(--hairline)]",
       )}
     >
       <div className="flex items-start justify-between gap-4">

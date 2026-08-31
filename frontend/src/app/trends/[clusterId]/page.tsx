@@ -66,7 +66,7 @@ export default async function ClusterCalls({
                     {humanLabel(call.intent_label)}
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-[var(--ink-3)]">
-                    {call.summary ?? " No summary stored."}
+                    {call.summary ?? "No summary stored."}
                   </p>
                   <p className="mt-1 font-mono text-xs text-[var(--ink-3)]">
                     {formatDateTime(call.started_at)} ·{" "}

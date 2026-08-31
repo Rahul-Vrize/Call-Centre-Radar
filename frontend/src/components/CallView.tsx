@@ -12,7 +12,7 @@ import EvidenceChip from "./EvidenceChip";
 
 const RESOLUTION_TONE: Record<string, string> = {
   resolved: "border-[var(--good)]/50 bg-[var(--good)]/10 text-[var(--good)]",
-  partial: " border-[var(--warning)]/50 bg-[var(--warning)]/10 text-[var(--warning)]",
+  partial: "border-[var(--warning)]/50 bg-[var(--warning)]/10 text-[var(--warning)]",
   unresolved: "border-[var(--critical)]/50 bg-[var(--critical)]/10 text-[var(--critical)]",
 };
 
